@@ -176,6 +176,7 @@ export function fillCatalog(){
             }
             m.itemsByCatalog[categoryId.val()].push(catalogModel)
             
+            m.itemsById[id.val()] = catalogModel
         })
     })
 }

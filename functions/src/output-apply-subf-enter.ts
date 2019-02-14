@@ -20,6 +20,6 @@ export function getResults(filterId: number, applied: Set<number>, selected: Set
     const json3 = converter.arrToJson(Array.from(applied))
     
     const json4 = converter.itemsBySubfilterToJson(countItemsBySubfilter_)
-    console.log(json4)
+ 
     return [json1, json2, json3, json4]
 }

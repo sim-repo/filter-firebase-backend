@@ -5,6 +5,7 @@ import { CatalogModel } from './model-catalog';
 import * as loadFirebase from './loading-firebase';
 import * as loadSequence from './loading-sequence';
 import * as outCatalog from './output-catalog';
+import * as outCatalogTotal from './output-catalog-count';
 import * as outEnterSubfilter from './output-apply-subf-enter';
 import * as outRemoveFilter from './output-remove-filter';
 import * as outApplyFilter from './output-apply-filter';
@@ -15,6 +16,7 @@ import * as userCache from './user-cache';
 admin.initializeApp();
 
 export let itemsByCatalog: { [id: number]: CatalogModel[]; } = { };
+export let itemsById: { [id: number]: CatalogModel } = { };
 
 // ********* prepared json: ***********
 export let filtersJson: String
@@ -30,6 +32,7 @@ export let useCacheSubfiltersByFilter = true
 export let useCacheSubfiltersByItem = true
 export let useCacheItemsBySubfilter = true
 
+export const prefetchLimit = 20
 
 
 export function setFiltersJson(jsonStr: String){
@@ -70,6 +73,7 @@ function parseRequest(req: functions.Request, appliedSubFilters_: Set<number>, s
     const arr2 = tmp2.split(",");
     applyLogic.setSelectedSubFilters(arr2, selectedSubFilters_)
 }
+
 
 
 
@@ -171,7 +175,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
                     subFiltersIds: results[1],
                     appliedSubFiltersIds: results[2],
                     selectedSubFiltersIds: results[3],
-                    countItemsBySubfilter: results[4]
+                    itemIds: results[4]
                 })
             }).catch(function (error) {console.log('mistake!', error)})
         })    
@@ -187,7 +191,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
             subFiltersIds: results[1],
             appliedSubFiltersIds: results[2],
             selectedSubFiltersIds: results[3],
-            countItemsBySubfilter: results[4]
+            itemIds: results[4]
         }
     }
 
@@ -205,7 +209,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
                         subFiltersIds: results[1],
                         appliedSubFiltersIds: results[2],
                         selectedSubFiltersIds: results[3],
-                        countItemsBySubfilter: results[4]
+                        itemIds: results[4]
                     })
                 }).catch(function (error) {console.log('mistake!', error)})
             } else {
@@ -215,7 +219,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
                     subFiltersIds: results[1],
                     appliedSubFiltersIds: results[2],
                     selectedSubFiltersIds: results[3],
-                    countItemsBySubfilter: results[4]
+                    itemIds: results[4]
                 })
             }
         }).catch(function (error) {console.log('mistake!', error)})
@@ -348,6 +352,8 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
     applyLogic.setAppliedSubFilters(arr, tmpAppliedSubFilters)
     const filterId = data.filterId
 
+
+    
     
     // force read from db
     if (helper.dictCount(applyLogic.filters) === 0 ||
@@ -417,21 +423,18 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
 
 export const catalogEntities  = functions.https.onCall((data, context) => {   
     console.log('useCacheFilters', useCacheFilters);
-    const tmpAppliedSubFilters = new Set<number>();
-    const arr = data.appliedSubFilters as String
-    applyLogic.setAppliedSubFilters(arr, tmpAppliedSubFilters)
-    const offset = data.offset as number
     const categoryId = data.categoryId as number
+    const itemIds = data.itemsIds as number[]
 
      // force read from db
-     if (helper.dictCount(applyLogic.subFilters) === 0 || 
-        helper.dictCount(applyLogic.itemsBySubfilter) === 0 || 
-        helper.dictCount(itemsByCatalog) === 0) {
+     if (helper.dictCount(itemsByCatalog) === 0 || 
+         helper.dictCount(itemsById) === 0
+     ) {
          console.log("force: read from db()")
          return new Promise((res3, reject) => {
             loadSequence.loadCatalogIds()
              .then(function() {
-                const json = outCatalog.getResults(categoryId, offset, tmpAppliedSubFilters)
+                const json = outCatalog.getResults(categoryId, itemIds)
                 res3({
                     items: json
                 })
@@ -443,7 +446,7 @@ export const catalogEntities  = functions.https.onCall((data, context) => {
     // read from cache by mobile request
     if (userCache.useGlobalCache(data)) {
         console.log("read from cache by mobile request")
-        const json = outCatalog.getResults(categoryId, offset, tmpAppliedSubFilters)
+        const json = outCatalog.getResults(categoryId, itemIds)
         return {
             items: json
         }
@@ -457,18 +460,77 @@ export const catalogEntities  = functions.https.onCall((data, context) => {
                 loadSequence.loadCatalogIds()
                 .then(function() {
                     console.log("cache-false: read from db()")
-                    const json = outCatalog.getResults(categoryId, offset, tmpAppliedSubFilters)
+                    const json = outCatalog.getResults(categoryId, itemIds)
                     res3({
                         items: json
                     })
                 }).catch(function (error) {console.log('mistake!', error)})
             } else {
                 console.log("read from cache")
-                const json = outCatalog.getResults(categoryId, offset, tmpAppliedSubFilters)
+                const json = outCatalog.getResults(categoryId, itemIds)
                     res3({
                         items: json
                     })
             }
         }).catch(function (error) {console.log('mistake!', error)})
     })
+})
+
+export const catalogTotal  = functions.https.onCall((data, context) => {
+    console.log('useCacheFilters', useCacheFilters);
+    const categoryId = data.categoryId as number
+    const perfetchLimitJson = JSON.stringify({"fetchLimit" : String(prefetchLimit)})
+
+
+     // force read from db
+     if ( helper.dictCount(itemsByCatalog) === 0) {
+         console.log("force: read from db()")
+         return new Promise((res3, reject) => {
+            loadSequence.loadCatalogIds()
+             .then(function() {
+                const result = outCatalogTotal.getResults(categoryId)
+                res3({
+                    itemIds: result,
+                    fetchLimit: perfetchLimitJson
+                })
+             }).catch(function (error) {console.log('mistake!', error)})
+         })    
+    }
+
+
+    // read from cache by mobile request
+    if (userCache.useGlobalCache(data)) {
+        console.log("read from cache by mobile request")
+        const result = outCatalogTotal.getResults(categoryId)
+        return {
+            itemIds: result,
+            fetchLimit: perfetchLimitJson
+        }
+    }
+
+    // useCacheFilters ? cache : db()
+    return new Promise((res3, reject) => {
+        loadFirebase.checkCache_Filters()
+        .then(function() {
+            if (useCacheFilters === false){
+                loadSequence.loadCatalogIds()
+                .then(function() {
+                    console.log("cache-false: read from db()")
+                    const result = outCatalogTotal.getResults(categoryId)
+                    res3({
+                        itemIds: result,
+                        fetchLimit: perfetchLimitJson
+                    })
+                }).catch(function (error) {console.log('mistake!', error)})
+            } else {
+                console.log("read from cache")
+                const result = outCatalogTotal.getResults(categoryId)
+                    res3({
+                        itemIds: result,
+                        fetchLimit: perfetchLimitJson
+                    })
+            }
+        }).catch(function (error) {console.log('mistake!', error)})
+    })
+    
 })

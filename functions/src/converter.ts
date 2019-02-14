@@ -3,7 +3,7 @@ import { FilterModel } from './model-filter';
 import { SubFilterModel } from './model-subfilter';
 
 
-export function arrToJson(arr:number[]){
+export function arrToJson(arr:number[]) : String {
     const obj : {[id: string]: number[]} = {}
     obj["items"] = []
     arr.forEach(id => obj["items"].push(id))
@@ -11,7 +11,7 @@ export function arrToJson(arr:number[]){
     return json
 }
 
-export function arrToJson2(arr:CatalogModel[]){
+export function arrToJson2(arr:CatalogModel[]) : String {
     const obj : {[id: string]: CatalogModel[]} = {}
     obj["items"] = []
     arr.forEach(id => obj["items"].push(id))
@@ -19,7 +19,7 @@ export function arrToJson2(arr:CatalogModel[]){
     return json
 }
 
-export function itemsBySubfilterToJson(dict: {[id: number]:number}){
+export function itemsBySubfilterToJson(dict: {[id: number]:number}) : String {
     
     const obj : {[id: string]: {[id:number]:number}[]} = {}
     
@@ -36,7 +36,7 @@ export function itemsBySubfilterToJson(dict: {[id: number]:number}){
 }
 
 
-export function filterToJson(dict: {[id: number]:FilterModel}){
+export function filterToJson(dict: {[id: number]:FilterModel}) : String {
     const obj : {[id: string]: FilterModel[]} = {}
     obj["items"] = []
     for (const key in dict) {
@@ -47,7 +47,7 @@ export function filterToJson(dict: {[id: number]:FilterModel}){
     return json
 }
 
-export function subfilterToJson(dict: {[id: number]:SubFilterModel}){
+export function subfilterToJson(dict: {[id: number]:SubFilterModel}) : String {
     const obj : {[id: string]: SubFilterModel[]} = {}
     obj["items"] = []
     for (const key in dict) {
@@ -58,4 +58,6 @@ export function subfilterToJson(dict: {[id: number]:SubFilterModel}){
     return json
 }
 
-
+export function singleToJson(key: String, val: String) : String {
+    return JSON.stringify({key : val})
+}

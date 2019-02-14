@@ -64,21 +64,10 @@ export function loadFilterIds(): Promise<void | {}>{
 
 export function loadCatalogIds(): Promise<void | {}>{
     return new Promise((res2, reject) => {
-
         const p1= new Promise((res, rej) => {//1
-            res(dataload.fillItemsBySubfilter())
-        }); 
-
-        const p2= new Promise((res, rej) => { // 1
-            res(dataload.fillSubFilters())
-        }); 
-
-        const p3= new Promise((res, rej) => {
             res(dataload.fillCatalog())
         }); 
-
-
-        Promise.all([p1, p2, p3]).then(values => { 
+        Promise.all([p1]).then(values => { 
             res2(1);
         })
         .catch(function (error) {console.log('mistake!', error)})

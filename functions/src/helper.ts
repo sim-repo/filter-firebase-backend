@@ -27,4 +27,3 @@ export function toNumber(num: any){
 export function stringIsNullOrEmpty(value: String){
     return value == null || value === "" || value.length === 0;
 }
-

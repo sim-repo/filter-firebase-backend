@@ -46,7 +46,10 @@ function getItemIds(bySubFilterIds: number[]) {
         const id = bySubFilterIds[key]
         if (itemsBySubfilter[id] != null) {
             const tmp = itemsBySubfilter[id]
-            arr = arr.concat(tmp)
+            for (const i of tmp) {
+                arr.push(i)
+            }
+            //arr = arr.concat(tmp)
         }
     }
     const set = new Set(arr)
@@ -84,20 +87,26 @@ export function groupApplying(applyingByFilter: {[id: number]: number[]}, applyi
 }
 
 
-function getSubFilters(items: Set<number>, countItemsBySubfilter_: {[id: number]: number}){
-    let arr: number[] = []
+function getSubFilters(items: Set<number>, countItemsBySubfilter_: {[id: number]: number} = null){
+    const arr: number[] = []
+
     for (const key of items) {
         const tmp = subfiltersByItem[key]
-        arr = arr.concat(tmp)
-    }
-    arr.forEach (id => {
-        if (countItemsBySubfilter_[id] == null) {
-            countItemsBySubfilter_[id] = 1
-            
-        } else {
-            countItemsBySubfilter_[id] += 1
+        for (const i of tmp) {
+            arr.push(i)
         }
-    })
+    }
+   
+    if (countItemsBySubfilter_ != null) {
+        arr.forEach (id => {
+            if (countItemsBySubfilter_[id] == null) {
+                countItemsBySubfilter_[id] = 1
+                
+            } else {
+                countItemsBySubfilter_[id] += 1
+            }
+        })
+    }
     return new Set(arr);
 }
 
@@ -224,11 +233,14 @@ export function applyFromFilter(appliedSubFilters_: Set<number>,
                                 filters_: { [id: number]: boolean }, 
                                 subFilters_: { [id: number]: SubFilterModel },
                                 enabledSubfilters_: { [id: number]: boolean },
-                                countItemsBySubfilter_: {[id: number]: number }
+                                itemsIds: Number[]
                                 ){
 
     const selected = selectedSubFilters_
+    //let t0 = new Date().getTime()
     const applied = getApplied(appliedSubFilters_, subFilters_)
+   // let t1 = new Date().getTime()                                
+  //  console.log("1: " + (t1 - t0) + " milliseconds.")
 
     let applying = selected
      if (applied != null) {
@@ -239,7 +251,10 @@ export function applyFromFilter(appliedSubFilters_: Set<number>,
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
         const items = getItemsIntersect(applyingByFilter)
-        const rem = getSubFilters(items, countItemsBySubfilter_)
+        for(const id of items) {
+            itemsIds.push(id)
+        }
+        const rem = getSubFilters(items)
         enableAllFilters(filters_, 0,false)
         enableAllSubFilters(0, subFilters_, enabledSubfilters_, false)
 
@@ -272,30 +287,37 @@ export function applyFromSubFilter(filterId: number,
     }
 
     const selected = helper.intersect(selectedSubFilters_, inFilter)
+    
     const applied = getApplied(appliedSubFilters_, subFilters_, filterId)
+    
+    
     let applying = selected
 
      if (applied != null) {
         applying = helper.union(selected, applied)
      } 
+
      if (applying.size == 0) {
         resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_)
         return
     }
+
     const applyingByFilter: {[id: number]: number[]} = {}
     groupApplying(applyingByFilter, applying, subFilters_)
 
     const items = getItemsIntersect(applyingByFilter)
-
     if (items.size == 0) {
         enableAllFilters(filters_, filterId, false)
         enableAllSubFilters(filterId, subFilters_, enabledSubfilters_, true)
         copySet(appliedSubFilters_, selectedSubFilters_, applying)
         return
     }
+
     const rem = getSubFilters(items, countItemsBySubfilter_)
+
     enableAllFilters(filters_, 0, false)
     enableAllSubFilters(filterId, subFilters_, enabledSubfilters_, false)
+
     for (const id of rem) {
         if (enabledSubfilters_[id] != null) {
             const subFilter = subFilters_[id]
