@@ -165,7 +165,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
         helper.dictCount(applyLogic.subfiltersByFilter) === 0||
         helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
         helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-        //console.log("force: read from db()")
+        console.log("force: read from db()")
         return new Promise((res3, reject) => {
             loadSequence.loadFilterIds()
             .then(function() {
@@ -184,7 +184,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
 
     // read from cache by mobile request
     if (userCache.useGlobalCache(data)) {
-    //  console.log("read from cache by mobile request")
+        console.log("read from cache by mobile request")
         const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters)
         return {
             filtersIds: results[0],

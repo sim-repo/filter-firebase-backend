@@ -2,7 +2,7 @@
 import { FilterModel } from './model-filter';
 import { SubFilterModel } from './model-subfilter';
 import * as helper from './helper';
-
+import * as m from './index';
 
 
 export let filters: { [id: number]: FilterModel; } = {};
@@ -195,12 +195,14 @@ function getApplied(appliedSubFilters_: Set<number>, subFilters_: { [id: number]
 }
 
 
-export function resetFilters(appliedSubFilters_: Set<Number>, 
+export function resetFilters(
+                             appliedSubFilters_: Set<Number>, 
                              selectedSubFilters_: Set<Number>, 
                              filters_: { [id: number]: boolean }, 
                              subFilters_: { [id: number]: SubFilterModel }, 
                              enabledSubfilters_: { [id: number]: boolean }, 
-                             exceptFilterId: number = 0){
+                             exceptFilterId: number = 0
+                             ){
 
     selectedSubFilters_.clear()
     appliedSubFilters_.clear()
@@ -287,9 +289,7 @@ export function applyFromSubFilter(filterId: number,
     }
 
     const selected = helper.intersect(selectedSubFilters_, inFilter)
-    
     const applied = getApplied(appliedSubFilters_, subFilters_, filterId)
-    
     
     let applying = selected
 
@@ -325,6 +325,7 @@ export function applyFromSubFilter(filterId: number,
             enableFilters(subFilter.filterId, filters_)
         }
     }
+    // проверить нужно ли здесь копировать?
     copySet(appliedSubFilters_, selectedSubFilters_, applying)
 }
 

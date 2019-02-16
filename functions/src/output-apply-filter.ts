@@ -7,16 +7,11 @@ export function getResults(applied: Set<number>, selected: Set<number>): [String
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {};
     const itemsIds: number[] = []
-
-
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
     userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
 
-    if (applied.size === 0 && selected.size === 0) {
-        applyLogic.resetFilters(applied, selected, filters_, applyLogic.subFilters, subFilters_)
-    } else {
-        applyLogic.applyFromFilter(applied, selected, filters_, applyLogic.subFilters, subFilters_,  itemsIds)
-    }
+    applyLogic.applyFromFilter(applied, selected, filters_, applyLogic.subFilters, subFilters_,  itemsIds)
+    
     const result1 = applyLogic.getEnabledFiltersIds(filters_)
     const json1 = converter.arrToJson(result1)
     const result2 = applyLogic.getEnabledSubFiltersIds(subFilters_)
