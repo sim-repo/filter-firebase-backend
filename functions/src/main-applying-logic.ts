@@ -289,7 +289,7 @@ export function applyFromSubFilter(filterId: number,
     }
 
     const selected = helper.intersect(selectedSubFilters_, inFilter)
-    const applied = getApplied(appliedSubFilters_, subFilters_, filterId)
+    const applied = getApplied(appliedSubFilters_, subFilters_)
     
     let applying = selected
 
@@ -316,8 +316,8 @@ export function applyFromSubFilter(filterId: number,
     const rem = getSubFilters(items, countItemsBySubfilter_)
 
     enableAllFilters(filters_, 0, false)
-    enableAllSubFilters(filterId, subFilters_, enabledSubfilters_, false)
-
+    enableAllSubFilters(0, subFilters_, enabledSubfilters_, false)
+    //enableAllSubFilters(filterId, subFilters_, enabledSubfilters_, false)
     for (const id of rem) {
         if (enabledSubfilters_[id] != null) {
             const subFilter = subFilters_[id]
@@ -326,6 +326,7 @@ export function applyFromSubFilter(filterId: number,
         }
     }
     // проверить нужно ли здесь копировать?
+    console.log("1:"+applying.size)
     copySet(appliedSubFilters_, selectedSubFilters_, applying)
 }
 
