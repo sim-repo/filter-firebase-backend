@@ -3,7 +3,11 @@ import * as applyLogic from './main-applying-logic';
 import * as userCache from './user-cache'
 
 
-export function getResults(filterId: number, applied: Set<number>, selected: Set<number>): [String, String, String, String]{
+export function getResults(filterId: number, 
+                           applied: Set<number>, 
+                           selected: Set<number>, 
+                           categoryId: number, 
+                           minPrice: number, maxPrice: number): [String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {}
@@ -12,7 +16,18 @@ export function getResults(filterId: number, applied: Set<number>, selected: Set
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
     userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
 
-    applyLogic.applyBeforeEnter(applied, selected, filterId, filters_, applyLogic.subFilters, subFilters_, countItemsBySubfilter_)
+
+    applyLogic.applyBeforeEnter(applied, 
+                                selected, 
+                                filterId, 
+                                filters_, 
+                                applyLogic.subFilters, 
+                                subFilters_, 
+                                countItemsBySubfilter_,
+                                categoryId,
+                                minPrice,
+                                maxPrice
+                                )
     const subFiltersIds = applyLogic.getEnabledSubFiltersIds(subFilters_)
     
     const json1 = JSON.stringify({"filterId" : String(filterId)})

@@ -52,7 +52,12 @@ export function loadFilterIds(): Promise<void | {}>{
             res(dataload.fillSubFilters())
         }); 
 
-        Promise.all([p1, p2, p3, p4, p5]).then(values => { 
+        const p6 = new Promise((res, rej) => {
+            res(dataload.fillPriceByItem())
+        });
+
+
+        Promise.all([p1, p2, p3, p4, p5, p6]).then(values => { 
             m.setFiltersJson(converter.filterToJson(applyLogic.filters))
             m.setSubfiltersJson(converter.subfilterToJson(applyLogic.subFilters))
             res2(1);
@@ -66,10 +71,56 @@ export function loadFilterIds(): Promise<void | {}>{
 
 export function loadCatalogIds(): Promise<void | {}>{
     return new Promise((res2, reject) => {
-        const p1= new Promise((res, rej) => {//1
+        const p1= new Promise((res, rej) => {
             res(dataload.fillCatalog())
         }); 
         Promise.all([p1]).then(values => { 
+            res2(1);
+        })
+        .catch(function (error) {console.log('mistake!', error)})
+    }).catch(function (error) {console.log('mistake!', error)})
+}
+
+
+
+export function loadTotals(): Promise<void | {}>{
+    return new Promise((res2, reject) => {
+        const p1= new Promise((res, rej) => {
+            res(dataload.fillCatalog())
+        }); 
+
+        const p2 = new Promise((res, rej) => {
+            res(dataload.fillRangePriceByCategory())
+        });
+
+        Promise.all([p1, p2]).then(values => { 
+            res2(1);
+        })
+        .catch(function (error) {console.log('mistake!', error)})
+    }).catch(function (error) {console.log('mistake!', error)})
+}
+
+
+export function loadApplyByPrices(): Promise<void | {}> {
+    return new Promise((res2, reject) => {
+
+        const p1= new Promise((res, rej) => {
+            res(dataload.fillPriceByItem())
+        }); 
+        
+        const p2 = new Promise((res, rej) => {
+            res(dataload.fillFilters())
+        }); 
+
+        const p3= new Promise((res, rej) => {
+            res(dataload.fillSubFilters())
+        }); 
+
+        const p4 = new Promise((res, rej) => {
+            res(dataload.fillSubfiltersByItem())
+        }); 
+
+        Promise.all([p1, p2, p3, p4]).then(values => { 
             res2(1);
         })
         .catch(function (error) {console.log('mistake!', error)})

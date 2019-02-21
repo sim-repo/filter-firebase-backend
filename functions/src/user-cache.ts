@@ -8,7 +8,6 @@ export function parseDataApplying(data: any, appliedSubFilters_: Set<number>, se
     const applied = data.appliedSubFilters as String
     const selected = data.selectedSubFilters as String
     
-
     if (helper.stringIsNullOrEmpty(applied) === false) {
         const str = applied.toString()
         const arr = str.split(",");
@@ -20,6 +19,22 @@ export function parseDataApplying(data: any, appliedSubFilters_: Set<number>, se
         const arr = str.split(",");
         applyLogic.setSelectedSubFilters(arr, selectedSubFilters_)
     }
+}
+
+export function parseMinPrice(data: any): number{
+    const sPriceFrom = data.minPrice as String
+    if (helper.stringIsNullOrEmpty(sPriceFrom) === false) {
+        return helper.toNumber(sPriceFrom)
+    }
+    return 0
+}
+
+export function parseMaxPrice(data: any): number{
+    const sPriceTo = data.maxPrice as String
+    if (helper.stringIsNullOrEmpty(sPriceTo) === false) {
+        return helper.toNumber(sPriceTo)
+    }
+    return 0
 }
 
 

@@ -2,15 +2,15 @@ import * as converter from './converter';
 import * as applyLogic from './main-applying-logic';
 import * as userCache from './user-cache'
 
-export function getResults(applied: Set<number>, selected: Set<number>): [String, String, String, String, String]{
+export function getResults(applied: Set<number>, selected: Set<number>, minPrice: number, maxPrice: number): [String, String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {};
     const itemsIds: number[] = []
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
     userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
-
-    applyLogic.applyFromFilter(applied, selected, filters_, applyLogic.subFilters, subFilters_,  itemsIds)
+    
+    applyLogic.applyFromFilter(applied, selected, filters_, applyLogic.subFilters, subFilters_,  itemsIds, minPrice, maxPrice)
     
     const result1 = applyLogic.getEnabledFiltersIds(filters_)
     const json1 = converter.arrToJson(result1)

@@ -2,7 +2,7 @@ import * as converter from './converter';
 import * as applyLogic from './main-applying-logic';
 import * as userCache from './user-cache'
 
-export function getResults(filterId: number, applied: Set<number>, selected: Set<number>): [String, String, String, String, String]{
+export function getResults(filterId: number, applied: Set<number>, selected: Set<number>, minPrice: number, maxPrice: number): [String, String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {};
@@ -12,7 +12,7 @@ export function getResults(filterId: number, applied: Set<number>, selected: Set
     userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
 
 
-    applyLogic.applyFromSubFilter(filterId, applied, selected, filters_, applyLogic.subFilters, subFilters_, countItemsBySubfilter_)
+    applyLogic.applyFromSubFilter(filterId, applied, selected, filters_, applyLogic.subFilters, subFilters_, countItemsBySubfilter_, minPrice, maxPrice)
     const result1 = applyLogic.getEnabledFiltersIds(filters_)
     const json1 = converter.arrToJson(result1)
     const result2 = applyLogic.getEnabledSubFiltersIds(subFilters_)

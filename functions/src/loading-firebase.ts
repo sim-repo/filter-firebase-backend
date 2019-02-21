@@ -2,10 +2,10 @@
 import * as admin from 'firebase-admin';
 import { FilterModel } from './model-filter';
 import { SubFilterModel } from './model-subfilter';
-import * as m from './index';
 import { CatalogModel } from './model-catalog';
+import { RangePrice } from './model-range-price';
 import * as applyLogic from './main-applying-logic'
-
+import * as m from './index';
 
 // ********* cache controls: ***********
 export function checkCache_Filters() {
@@ -146,6 +146,36 @@ export function fillSubfiltersByFilter(){
         })
     })
 }
+
+export function fillPriceByItem(){
+    return admin.database().ref("/pricesByItem/").once('value')
+    .then(function(snapshot) {
+        snapshot.forEach(function(childSnapshot) {
+            const id = childSnapshot.child("id")
+            const price = childSnapshot.child("price")   
+            applyLogic.priceByItemId[id.val()] = price.val();
+        })
+    })
+}
+
+
+export function fillRangePriceByCategory(){
+    return admin.database().ref("/rangePriceByCategory/").once('value')
+    .then(function(snapshot) {
+        snapshot.forEach(function(childSnapshot) {
+            const id = childSnapshot.child("id")
+            const min = childSnapshot.child("minPrice")   
+            const max = childSnapshot.child("maxPrice")
+            const rangePrice = new RangePrice(
+                id.val(),
+                min.val(),
+                max.val()
+            )
+            applyLogic.rangePriceByCategory[id.val()] = rangePrice
+        })
+    })
+}
+
 
 export function fillCatalog(){
     return admin.database().ref("/catalog/").once('value')

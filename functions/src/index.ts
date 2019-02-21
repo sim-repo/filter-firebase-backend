@@ -10,6 +10,7 @@ import * as outEnterSubfilter from './output-apply-subf-enter';
 import * as outRemoveFilter from './output-remove-filter';
 import * as outApplyFilter from './output-apply-filter';
 import * as outApplySubfilter from './output-apply-subfilter';
+import * as outApplyByPrice from './output-apply-price';
 import * as helper from './helper';
 import * as userCache from './user-cache';
 
@@ -75,8 +76,9 @@ function parseRequest(req: functions.Request, appliedSubFilters_: Set<number>, s
 }
 
 
-
-
+// ******************************
+// *** remove from Filter ***
+// ******************************
 export const apiRemoveFilter  = functions.https.onCall((data, context) => {   
     const tmpAppliedSubFilters = new Set()
     const tmpSelectedSubFilters = new Set()
@@ -151,13 +153,16 @@ export const apiRemoveFilter  = functions.https.onCall((data, context) => {
 })
 
 
-
-
+// ******************************
+// *** apply from Filter ***
+// ******************************
 export const applyFromFilterNow  = functions.https.onCall((data, context) => {   
    // console.log('useCacheFilters', useCacheFilters);
     const tmpAppliedSubFilters = new Set()
     const tmpSelectedSubFilters = new Set()
     userCache.parseDataApplying(data, tmpAppliedSubFilters, tmpSelectedSubFilters)
+    const priceFrom: number = userCache.parseMinPrice(data)
+    const priceTo: number = userCache.parseMaxPrice(data)
 
     // force read from db
     if (helper.dictCount(applyLogic.filters) === 0 ||
@@ -169,7 +174,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
         return new Promise((res3, reject) => {
             loadSequence.loadFilterIds()
             .then(function() {
-                const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters)
+                const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
                 res3( {
                     filtersIds: results[0],
                     subFiltersIds: results[1],
@@ -185,7 +190,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
     // read from cache by mobile request
     if (userCache.useGlobalCache(data)) {
         console.log("read from cache by mobile request")
-        const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters)
+        const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
         return {
             filtersIds: results[0],
             subFiltersIds: results[1],
@@ -203,7 +208,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
                 //console.log("cache-false: read from db()")
                 loadSequence.loadFilterIds()
                 .then(function() {
-                    const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters)
+                    const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
                     res3( {
                         filtersIds: results[0],
                         subFiltersIds: results[1],
@@ -213,7 +218,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
                     })
                 }).catch(function (error) {console.log('mistake!', error)})
             } else {
-                const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters)
+                const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
                 res3( {
                     filtersIds: results[0],
                     subFiltersIds: results[1],
@@ -226,14 +231,16 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
     })
 })
 
-
-
+// ******************************
+// *** apply from SubFilter ***
+// ******************************
 export const applyFromSubFilterNow  = functions.https.onCall((data, context) => {   
   //  console.log('useCacheFilters', useCacheFilters);
     const tmpAppliedSubFilters = new Set()
     const tmpSelectedSubFilters = new Set()
     userCache.parseDataApplying(data, tmpAppliedSubFilters, tmpSelectedSubFilters)
-
+    const priceFrom: number = userCache.parseMinPrice(data)
+    const priceTo: number = userCache.parseMaxPrice(data)
     const filterId = data.filterId
 
      // force read from db
@@ -246,7 +253,7 @@ export const applyFromSubFilterNow  = functions.https.onCall((data, context) => 
          return new Promise((res3, reject) => {
             loadSequence.loadFilterIds()
              .then(function() {
-                const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+                const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
                 res3( {
                     filtersIds: results[0],
                     subFiltersIds: results[1],
@@ -262,7 +269,7 @@ export const applyFromSubFilterNow  = functions.https.onCall((data, context) => 
     // read from cache by mobile request
     if (userCache.useGlobalCache(data)) {
        // console.log("read from cache by mobile request")
-       const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+       const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
        return{
            filtersIds: results[0],
            subFiltersIds: results[1],
@@ -280,7 +287,7 @@ export const applyFromSubFilterNow  = functions.https.onCall((data, context) => 
               //  console.log("cache-false: read from db()")
               loadSequence.loadFilterIds()
                 .then(function() {
-                    const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+                    const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
                     res3( {
                         filtersIds: results[0],
                         subFiltersIds: results[1],
@@ -290,7 +297,7 @@ export const applyFromSubFilterNow  = functions.https.onCall((data, context) => 
                     })
                 }).catch(function (error) {console.log('mistake!', error)})
             } else {
-                const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+                const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, priceFrom, priceTo)
                 res3( {
                     filtersIds: results[0],
                     subFiltersIds: results[1],
@@ -303,8 +310,9 @@ export const applyFromSubFilterNow  = functions.https.onCall((data, context) => 
     })
 })
 
-
-
+// ******************************
+// *** full Filter Entities***
+// ******************************
 export const fullFilterEntities  = functions.https.onCall((data, context) => {   
     // console.log('useCacheFilters', useCacheFilters);
 
@@ -341,8 +349,9 @@ export const fullFilterEntities  = functions.https.onCall((data, context) => {
 })
 
 
-
-
+// ******************************
+// *** current subfilters ids ***
+// ******************************
 export const currSubFilterIds  = functions.https.onCall((data, context) => {   
   // console.log('useCacheFilters', useCacheFilters);
     const tmpAppliedSubFilters = new Set()
@@ -350,10 +359,11 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
 
     const arr = data.appliedSubFilters
     applyLogic.setAppliedSubFilters(arr, tmpAppliedSubFilters)
+    const categoryId = data.categoryId
     const filterId = data.filterId
+    const minPrice: number = userCache.parseMinPrice(data)
+    const maxPrice: number = userCache.parseMaxPrice(data)
 
-
-    
     
     // force read from db
     if (helper.dictCount(applyLogic.filters) === 0 ||
@@ -365,7 +375,11 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
             return new Promise((res3, reject) => {
                 loadSequence.loadFilterIds()
                 .then(function() {
-                    const result = outEnterSubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+                    const result = outEnterSubfilter.getResults(filterId, 
+                                                                tmpAppliedSubFilters, 
+                                                                tmpSelectedSubFilters, 
+                                                                categoryId,
+                                                                minPrice, maxPrice)
                     res3( {
                         filterId: result[0],
                         subFiltersIds: result[1],
@@ -379,7 +393,11 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
     // read from cache by mobile request
     if (userCache.useGlobalCache(data)) {
       //  console.log("read from cache by mobile request")
-        const result = outEnterSubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+        const result = outEnterSubfilter.getResults(filterId, 
+                                                    tmpAppliedSubFilters, 
+                                                    tmpSelectedSubFilters, 
+                                                    categoryId,
+                                                    minPrice, maxPrice)
         return{
             filterId: result[0],
             subFiltersIds: result[1],
@@ -397,7 +415,11 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
           //      console.log("cache-false: read from db()")
                 loadSequence.loadFilterIds()
                     .then(function() {
-                        const result = outEnterSubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+                        const result = outEnterSubfilter.getResults(filterId, 
+                                                                    tmpAppliedSubFilters, 
+                                                                    tmpSelectedSubFilters, 
+                                                                    categoryId,
+                                                                    minPrice, maxPrice)
                         res3( {
                             filterId: result[0],
                             subFiltersIds: result[1],
@@ -406,7 +428,11 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
                         })
                     }).catch(function (error) {console.log('mistake!', error)})
             } else {
-                const result = outEnterSubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters)
+                const result = outEnterSubfilter.getResults(filterId, 
+                                                            tmpAppliedSubFilters, 
+                                                            tmpSelectedSubFilters, 
+                                                            categoryId,
+                                                            minPrice, maxPrice)
                 res3( {
                     filterId: result[0],
                     subFiltersIds: result[1],
@@ -419,8 +445,9 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
    
 })
 
-
-
+// ******************************
+// *** catalog Entities ***
+// ******************************
 export const catalogEntities  = functions.https.onCall((data, context) => {   
     console.log('useCacheFilters', useCacheFilters);
     const categoryId = data.categoryId as number
@@ -476,22 +503,26 @@ export const catalogEntities  = functions.https.onCall((data, context) => {
     })
 })
 
+// ******************************
+// *** catalog Totals ***
+// ******************************
 export const catalogTotal  = functions.https.onCall((data, context) => {
     console.log('useCacheFilters', useCacheFilters);
     const categoryId = data.categoryId as number
     const perfetchLimitJson = JSON.stringify({"fetchLimit" : String(prefetchLimit)})
 
-
      // force read from db
      if ( helper.dictCount(itemsByCatalog) === 0) {
          console.log("force: read from db()")
          return new Promise((res3, reject) => {
-            loadSequence.loadCatalogIds()
+            loadSequence.loadTotals()
              .then(function() {
-                const result = outCatalogTotal.getResults(categoryId)
+                const results = outCatalogTotal.getResults(categoryId)
                 res3({
-                    itemIds: result,
-                    fetchLimit: perfetchLimitJson
+                    itemIds: results[0],
+                    fetchLimit: perfetchLimitJson,
+                    minPrice: results[1],
+                    maxPrice: results[2]
                 })
              }).catch(function (error) {console.log('mistake!', error)})
          })    
@@ -501,10 +532,12 @@ export const catalogTotal  = functions.https.onCall((data, context) => {
     // read from cache by mobile request
     if (userCache.useGlobalCache(data)) {
         console.log("read from cache by mobile request")
-        const result = outCatalogTotal.getResults(categoryId)
+        const results = outCatalogTotal.getResults(categoryId)
         return {
-            itemIds: result,
-            fetchLimit: perfetchLimitJson
+            itemIds: results[0],
+            fetchLimit: perfetchLimitJson,
+            minPrice: results[1],
+            maxPrice: results[2]
         }
     }
 
@@ -513,22 +546,86 @@ export const catalogTotal  = functions.https.onCall((data, context) => {
         loadFirebase.checkCache_Filters()
         .then(function() {
             if (useCacheFilters === false){
-                loadSequence.loadCatalogIds()
+                loadSequence.loadTotals()
                 .then(function() {
                     console.log("cache-false: read from db()")
-                    const result = outCatalogTotal.getResults(categoryId)
+                    const results = outCatalogTotal.getResults(categoryId)
                     res3({
-                        itemIds: result,
-                        fetchLimit: perfetchLimitJson
+                        itemIds: results[0],
+                        fetchLimit: perfetchLimitJson,
+                        minPrice: results[1],
+                        maxPrice: results[2]
                     })
                 }).catch(function (error) {console.log('mistake!', error)})
             } else {
                 console.log("read from cache")
-                const result = outCatalogTotal.getResults(categoryId)
+                const results = outCatalogTotal.getResults(categoryId)
                     res3({
-                        itemIds: result,
-                        fetchLimit: perfetchLimitJson
+                        itemIds: results[0],
+                        fetchLimit: perfetchLimitJson,
+                        minPrice: results[1],
+                        maxPrice: results[2]
                     })
+            }
+        }).catch(function (error) {console.log('mistake!', error)})
+    })
+    
+})
+
+
+
+// ******************************
+// *** apply Prices ***
+// ******************************
+export const applyByPrices  = functions.https.onCall((data, context) => {
+    console.log('useCacheFilters', useCacheFilters);
+    const categoryId = data.categoryId as number
+    const minPrice = userCache.parseMinPrice(data)
+    const maxPrice = userCache.parseMaxPrice(data)
+
+     // force read from db
+     if ( helper.dictCount(itemsByCatalog) === 0) {
+         console.log("force: read from db()")
+         return new Promise((res3, reject) => {
+            loadSequence.loadApplyByPrices()
+             .then(function() {
+                const result = outApplyByPrice.getResults(categoryId, minPrice, maxPrice)
+                res3({
+                    filterIds: result
+                })
+             }).catch(function (error) {console.log('mistake!', error)})
+         })    
+    }
+
+
+    // read from cache by mobile request
+    if (userCache.useGlobalCache(data)) {
+        console.log("read from cache by mobile request")
+        const result = outApplyByPrice.getResults(categoryId, minPrice, maxPrice)
+        return {
+            filterIds: result
+        }
+    }
+
+    // useCacheFilters ? cache : db()
+    return new Promise((res3, reject) => {
+        loadSequence.loadApplyByPrices()
+        .then(function() {
+            if (useCacheFilters === false){
+                loadSequence.loadTotals()
+                .then(function() {
+                    console.log("cache-false: read from db()")
+                    const result = outApplyByPrice.getResults(categoryId, minPrice, maxPrice)
+                    res3({
+                        filterIds: result
+                    })
+                }).catch(function (error) {console.log('mistake!', error)})
+            } else {
+                console.log("read from cache")
+                const result = outApplyByPrice.getResults(categoryId, minPrice, maxPrice)
+                res3({
+                    filterIds: result
+                })
             }
         }).catch(function (error) {console.log('mistake!', error)})
     })

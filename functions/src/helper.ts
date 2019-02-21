@@ -1,10 +1,16 @@
 
 
-export function dictCount(dict: {}){
+export function dictCount(dict: {}): number {
+    if (dict == null) {
+        return 0
+    }
     return Object.keys(dict).length
 }
 
-export function dictFirstKey(dict: {}) {
+export function dictFirstKey(dict: {}): string {
+    if (dict == null) {
+        return ""
+    }
     return Object.keys(dict)[0];
 }
 
