@@ -40,7 +40,6 @@ export function getEnabledSubFiltersIds(enabledSubfilters_: { [id: number]: bool
 
 
 function checkPrice(itemId: number, minPrice: number, maxPrice: number): Boolean {
-    console.log("checkPrice")
     if (priceByItemId[itemId] != null) {
         const price = priceByItemId[itemId]
         if (price >= minPrice && price <= maxPrice) {
@@ -270,6 +269,7 @@ export function applyFromFilter(appliedSubFilters_: Set<number>,
                                 subFilters_: { [id: number]: SubFilterModel },
                                 enabledSubfilters_: { [id: number]: boolean },
                                 itemsIds: Number[],
+                                categoryId: number,
                                 minPrice: number,
                                 maxPrice: number
                                 ){
@@ -285,26 +285,35 @@ export function applyFromFilter(appliedSubFilters_: Set<number>,
         applying = helper.union(selected, applied)
      } 
     
-    if (applying.size > 0) {
+     if (applying.size == 0 && minPrice == 0 && maxPrice == 0 ) {
+         return
+     }
+
+     let items: Set<number> = new Set()
+     if (applying.size == 0) {
+         items = getItemsByPrice(categoryId, minPrice, maxPrice)     
+     } else {
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
-        const items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
-        for(const id of items) {
-            itemsIds.push(id)
-        }
-        const rem = getSubFilters(items)
-        enableAllFilters(filters_, 0,false)
-        enableAllSubFilters(0, subFilters_, enabledSubfilters_, false)
-
-        for (const id of rem) {
-            if (enabledSubfilters_[id] != null) {
-                const subFilter = subFilters_[id]
-                enabledSubfilters_[id] = true
-                enableFilters(subFilter.filterId, filters_)
-            }
-        }
-        copySet(appliedSubFilters_, selectedSubFilters_, applying)
+        items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
+     }
+    
+    for(const id of items) {
+        itemsIds.push(id)
     }
+    const rem = getSubFilters(items)
+    enableAllFilters(filters_, 0,false)
+    enableAllSubFilters(0, subFilters_, enabledSubfilters_, false)
+
+    for (const id of rem) {
+        if (enabledSubfilters_[id] != null) {
+            const subFilter = subFilters_[id]
+            enabledSubfilters_[id] = true
+            enableFilters(subFilter.filterId, filters_)
+        }
+    }
+    copySet(appliedSubFilters_, selectedSubFilters_, applying)
+    
 }
 
 
@@ -317,6 +326,7 @@ export function applyFromSubFilter(filterId: number,
                                     subFilters_: { [id: number]: SubFilterModel },
                                     enabledSubfilters_: { [id: number]: boolean },
                                     countItemsBySubfilter_: {[id: number]: number },
+                                    categoryId: number,
                                     minPrice: number,
                                     maxPrice: number
                                     ){
@@ -335,15 +345,20 @@ export function applyFromSubFilter(filterId: number,
         applying = helper.union(selected, applied)
      } 
 
-     if (applying.size == 0) {
+     if (applying.size == 0 && minPrice == 0 && maxPrice == 0 ) {
         resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_)
         return
     }
 
-    const applyingByFilter: {[id: number]: number[]} = {}
-    groupApplying(applyingByFilter, applying, subFilters_)
+    let items: Set<number> = new Set()
+    if (applying.size == 0) {
+        items = getItemsByPrice(categoryId, minPrice, maxPrice)     
+    } else {
+        const applyingByFilter: {[id: number]: number[]} = {}
+        groupApplying(applyingByFilter, applying, subFilters_)
+        items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
+    }
 
-    const items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
     if (items.size == 0) {
         enableAllFilters(filters_, filterId, false)
         enableAllSubFilters(filterId, subFilters_, enabledSubfilters_, true)
