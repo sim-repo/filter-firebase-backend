@@ -14,6 +14,8 @@ export function getResults(applied: Set<number>,
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
     userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
     
+                            console.log("gerRs:" + maxPrice)
+
     applyLogic.applyFromFilter(applied, 
                                selected, 
                                filters_, 

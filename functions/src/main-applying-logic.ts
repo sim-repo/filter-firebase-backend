@@ -42,6 +42,7 @@ export function getEnabledSubFiltersIds(enabledSubfilters_: { [id: number]: bool
 function checkPrice(itemId: number, minPrice: number, maxPrice: number): Boolean {
     if (priceByItemId[itemId] != null) {
         const price = priceByItemId[itemId]
+        console.log("1: "+ minPrice + " : " + maxPrice + " : "+ price)
         if (price >= minPrice && price <= maxPrice) {
             return true
         }
@@ -55,9 +56,12 @@ function getItemIds(bySubFilterIds: number[], minPrice: number = 0, maxPrice: nu
     const arr: number[] = []
     for (const key in bySubFilterIds) {
         const id = bySubFilterIds[key]
+        
         if (itemsBySubfilter[id] != null) {
             const tmp = itemsBySubfilter[id]
+            console.log("items count: "+ tmp.length)
             for (const i of tmp) {
+                console.log("item no: "+ i)
                 if (minPrice > 0 || maxPrice > 0) {
                     if (checkPrice(i, minPrice, maxPrice)) {
                         arr.push(i)
@@ -74,15 +78,14 @@ function getItemIds(bySubFilterIds: number[], minPrice: number = 0, maxPrice: nu
 
 
 export function getItemsIntersect(applyingByFilter: {[id: number]: number[]}, 
-                                    exceptFilterId: number = 0, 
-                                    minPrice: number = 0, 
-                                    maxPrice: number = 0) {
+                                    exceptFilterId: number, 
+                                    minPrice: number, 
+                                    maxPrice: number) {
     let res = new Set<number>()
     let tmp = new Set<number>()
 
     for (const key in applyingByFilter) {
         if ((Number(key) != exceptFilterId) || (exceptFilterId == 0)) {
-            
             const val = applyingByFilter[key]
             tmp = getItemIds(val, minPrice, maxPrice)
         }
@@ -295,9 +298,9 @@ export function applyFromFilter(appliedSubFilters_: Set<number>,
      } else {
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
-        items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
+        items = getItemsIntersect(applyingByFilter, 0, minPrice, maxPrice)
      }
-    
+
     for(const id of items) {
         itemsIds.push(id)
     }
@@ -356,7 +359,7 @@ export function applyFromSubFilter(filterId: number,
     } else {
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
-        items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
+        items = getItemsIntersect(applyingByFilter, 0, minPrice, maxPrice)
     }
 
     if (items.size == 0) {
@@ -400,7 +403,7 @@ function applyAfterRemove(appliedSubFilters_: Set<number>,
     }
     const applyingByFilter: {[id: number]: number[]} = {}
     groupApplying(applyingByFilter, applying, subFilters_)
-    const items = getItemsIntersect(applyingByFilter)
+    const items = getItemsIntersect(applyingByFilter, 0, 0, 0)
     if (items.size == 0) {
         resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_)
     }
@@ -454,7 +457,7 @@ export function applyBeforeEnter(appliedSubFilters_: Set<number>,
     } else {
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
-        items = getItemsIntersect(applyingByFilter, minPrice, maxPrice)
+        items = getItemsIntersect(applyingByFilter, 0, minPrice, maxPrice)
     }
 
     if (items.size == 0) {

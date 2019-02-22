@@ -164,7 +164,7 @@ export const applyFromFilterNow  = functions.https.onCall((data, context) => {
     const priceFrom: number = userCache.parseMinPrice(data)
     const priceTo: number = userCache.parseMaxPrice(data)
     const categoryId = data.categoryId
-
+    console.log("init: "+priceTo)
 
     // force read from db
     if (helper.dictCount(applyLogic.filters) === 0 ||
