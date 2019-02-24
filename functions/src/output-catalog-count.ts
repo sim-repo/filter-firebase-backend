@@ -11,12 +11,12 @@ export function getResults(categoryId: number): [String, String, String] {
     }
     const json1 = converter.arrToJson(itemIds)
 
-    var json2: String = ""
-    var json3: String = ""
+    let json2: String = ""
+    let json3: String = ""
     const rangePrice = applyLogic.rangePriceByCategory[categoryId]
     if (rangePrice != null) {
-        json2 = JSON.stringify({"minPrice": String(rangePrice.minPrice)})   
-        json3 = JSON.stringify({"maxPrice": String(rangePrice.maxPrice)})   
+        json2 = JSON.stringify({"minPrice": String(rangePrice.userMinPrice)})   
+        json3 = JSON.stringify({"maxPrice": String(rangePrice.userMaxPrice)})   
     }
     return [json1, json2, json3]
 }

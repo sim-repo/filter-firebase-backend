@@ -1,13 +1,12 @@
 import * as converter from './converter';
 import * as applyLogic from './main-applying-logic';
 import * as userCache from './user-cache'
-
+import { RangePrice } from './model-range-price';
 
 export function getResults(filterId: number, 
                            applied: Set<number>, 
                            selected: Set<number>, 
-                           categoryId: number, 
-                           minPrice: number, maxPrice: number): [String, String, String, String]{
+                           rangePrice: RangePrice): [String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {}
@@ -24,9 +23,7 @@ export function getResults(filterId: number,
                                 applyLogic.subFilters, 
                                 subFilters_, 
                                 countItemsBySubfilter_,
-                                categoryId,
-                                minPrice,
-                                maxPrice
+                                rangePrice
                                 )
     const subFiltersIds = applyLogic.getEnabledSubFiltersIds(subFilters_)
     

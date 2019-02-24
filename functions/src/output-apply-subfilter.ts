@@ -1,17 +1,15 @@
 import * as converter from './converter';
 import * as applyLogic from './main-applying-logic';
 import * as userCache from './user-cache'
+import { RangePrice } from './model-range-price';
 
 export function getResults(filterId: number, 
                             applied: Set<number>, 
                             selected: Set<number>, 
-                            categoryId: number, 
-                            minPrice: number, 
-                            maxPrice: number): [String, String, String, String, String]{
+                            rangePrice: RangePrice): [String, String, String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {};
-    const countItemsBySubfilter_: {[id: number]: number} = {}
     
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
     userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
@@ -23,9 +21,7 @@ export function getResults(filterId: number,
                                     filters_, 
                                     applyLogic.subFilters, 
                                     subFilters_, 
-                                    countItemsBySubfilter_, 
-                                    categoryId,
-                                    minPrice, maxPrice)
+                                    rangePrice)
 
     const result1 = applyLogic.getEnabledFiltersIds(filters_)
     const json1 = converter.arrToJson(result1)
@@ -35,8 +31,7 @@ export function getResults(filterId: number,
     const json3= converter.arrToJson(Array.from(result3))
     const result4 = selected
     const json4= converter.arrToJson(Array.from(result4))
-    const json5 = converter.itemsBySubfilterToJson(countItemsBySubfilter_)
-
-
-    return [json1, json2, json3, json4, json5]
+    const json5 = JSON.stringify({"tipMinPrice" : String(rangePrice.tipMinPrice)})    
+    const json6 = JSON.stringify({"tipMaxPrice" : String(rangePrice.tipMaxPrice)})      
+    return [json1, json2, json3, json4, json5, json6]
 }

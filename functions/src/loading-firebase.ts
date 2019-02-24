@@ -166,11 +166,13 @@ export function fillRangePriceByCategory(){
             const id = childSnapshot.child("id")
             const min = childSnapshot.child("minPrice")   
             const max = childSnapshot.child("maxPrice")
-            const rangePrice = new RangePrice(
-                id.val(),
-                min.val(),
-                max.val()
-            )
+            const rangePrice = new RangePrice()
+            rangePrice.categoryId = 0
+            rangePrice.userMinPrice = min.val()
+            rangePrice.userMaxPrice = max.val()
+            rangePrice.tipMinPrice = min.val()
+            rangePrice.tipMaxPrice = max.val()
+
             applyLogic.rangePriceByCategory[id.val()] = rangePrice
         })
     })

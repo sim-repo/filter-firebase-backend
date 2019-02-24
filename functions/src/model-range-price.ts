@@ -1,13 +1,11 @@
 
 export class RangePrice {
     
-    categoryId:number = 0;
-    minPrice:number = 0
-    maxPrice:number = 0
-
-    constructor(categoryId: number, minPrice: number, maxPrice: number) {
-        this.categoryId = categoryId
-        this.minPrice = minPrice;
-        this.maxPrice = maxPrice
-    }
+    categoryId:number = 0
+    initialMinPrice:number = 0
+    initialMaxPrice:number = 0
+    userMinPrice:number = 0
+    userMaxPrice:number = 0
+    tipMinPrice:number = 0
+    tipMaxPrice: number = 0
 }
