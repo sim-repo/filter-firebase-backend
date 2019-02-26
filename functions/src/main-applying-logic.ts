@@ -197,7 +197,11 @@ function enableAllFilters(enabledFilters_: { [id: number]: boolean; }, exceptFil
     }
 }
 
-function enableAllSubFilters(filterId: number = 0, subFilters_: { [id: number]: SubFilterModel; }, enabledSubfilters_: { [id: number]: boolean; } , enable: boolean){
+function enableAllSubFilters(filterId: number = 0, 
+                             subFilters_: { [id: number]: SubFilterModel; }, 
+                             enabledSubfilters_: { [id: number]: boolean; } , 
+                             enable: boolean){
+
     for (const id in subFilters_ ){
         const val = subFilters_[id]
         if (val.filterId != filterId || filterId == 0) {
@@ -262,15 +266,16 @@ function getApplied(appliedSubFilters_: Set<number>, subFilters_: { [id: number]
 
 export function resetFilters(
                              appliedSubFilters_: Set<Number>, 
-                             selectedSubFilters_: Set<Number>, 
+                             selectedSubFilters_: Set<Number> = null, 
                              filters_: { [id: number]: boolean }, 
                              subFilters_: { [id: number]: SubFilterModel }, 
                              enabledSubfilters_: { [id: number]: boolean }, 
                              exceptFilterId: number = 0,
                              rangePrice: RangePrice = null
                              ){
-
-    selectedSubFilters_.clear()
+    if (selectedSubFilters_ != null) {
+        selectedSubFilters_.clear()
+    }                            
     appliedSubFilters_.clear()
     enableAllFilters(filters_, 0, true)
     enableAllSubFilters(exceptFilterId, subFilters_, enabledSubfilters_, true)
@@ -312,29 +317,30 @@ export function applyFromFilter(appliedSubFilters_: Set<number>,
                                 rangePrice: RangePrice
                                 ){
 
+    // block #1 >>
     const selected = selectedSubFilters_
-    //let t0 = new Date().getTime()
     const applied = getApplied(appliedSubFilters_, subFilters_)
-   // let t1 = new Date().getTime()                                
-  //  console.log("1: " + (t1 - t0) + " milliseconds.")
-
     let applying = selected
-     if (applied != null) {
-        applying = helper.union(selected, applied)
-     } 
-    
-     if (applying.size == 0 && rangePrice.userMinPrice == 0 && rangePrice.userMaxPrice == 0 ) {
-         return
-     }
 
+    if (applied != null) {
+        applying = helper.union(selected, applied)
+    } 
+    
+    if (applying.size == 0 && rangePrice.userMinPrice == 0 && rangePrice.userMaxPrice == 0 ) {
+         return
+    }
+     // block #1 <<
+
+     // block #2 >>
      let items: Set<number> = new Set()
      if (applying.size == 0) {
          items = getItemsByPrice(rangePrice)     
-     } else {
+    } else {
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
         items = getItemsIntersect(applyingByFilter, 0, rangePrice)
-     }
+    }
+    // block #2 <<
 
     for(const id of items) {
         itemsIds.push(id)
@@ -364,26 +370,31 @@ export function applyFromSubFilter(filterId: number,
                                     enabledSubfilters_: { [id: number]: boolean },
                                     rangePrice: RangePrice
                                     ){
+
+    // block #1 >>
     let inFilter = new Set<number>()
     if (subfiltersByFilter[filterId] != null) {
         const ids = subfiltersByFilter[filterId]
         inFilter = new Set(ids)
     }
-
     const selected = helper.intersect(selectedSubFilters_, inFilter)
     const applied = getApplied(appliedSubFilters_, subFilters_)
-    
     let applying = selected
 
-     if (applied != null) {
+    if (applied != null) {
         applying = helper.union(selected, applied)
-     } 
+    } 
+    // block #1 <<
 
-     if (applying.size == 0 && rangePrice.userMinPrice == 0 && rangePrice.userMaxPrice == 0 ) {
+
+    // block #2 >>
+    if (applying.size == 0 && rangePrice.userMinPrice == 0 && rangePrice.userMaxPrice == 0 ) {
         resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_, 0, rangePrice)
         return
     }
+    // block #2 <<
 
+    // block #3 >>
     let items: Set<number> = new Set()
     if (applying.size == 0) {
         items = getItemsByPrice(rangePrice)     
@@ -391,18 +402,20 @@ export function applyFromSubFilter(filterId: number,
         const applyingByFilter: {[id: number]: number[]} = {}
         groupApplying(applyingByFilter, applying, subFilters_)
         items = getItemsIntersect(applyingByFilter, 0, rangePrice)
-        // if (items.size > 1) {
-        //     limitRangePrice(rangePrice, items)
-        // }
     }
+    // block #3 <<
 
+    // block #4 >>
     if (items.size == 0) {
         enableAllFilters(filters_, filterId, false)
         enableAllSubFilters(filterId, subFilters_, enabledSubfilters_, true)
         copySet(appliedSubFilters_, selectedSubFilters_, applying)
         return
     }
+    // block #4 <<
 
+
+    // block #5 >>
     const rem = getSubFilters(items)
 
     enableAllFilters(filters_, 0, false)
@@ -417,6 +430,7 @@ export function applyFromSubFilter(filterId: number,
     }
     // проверить нужно ли здесь копировать?
     copySet(appliedSubFilters_, selectedSubFilters_, applying)
+    // block #5 <<
 }
 
 
@@ -431,12 +445,15 @@ function applyAfterRemove(appliedSubFilters_: Set<number>,
                           rangePrice: RangePrice
                           ){
 
+    // block #1 >>
     const applying = getApplied(appliedSubFilters_, subFilters_)
     if (applying.size === 0 && rangePrice.userMinPrice == 0 && rangePrice.userMaxPrice == 0) {
         resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_, 0, rangePrice)
         return
     }
+    // block #1 <<
 
+    // block #2 >>
     let items: Set<number> = new Set()
     const applyingByFilter: {[id: number]: number[]} = {}
     if (applying.size == 0) {
@@ -451,7 +468,9 @@ function applyAfterRemove(appliedSubFilters_: Set<number>,
         //     resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_, 0, rangePrice)
         // }
     }
+    // block #2 <<
 
+    // block #3 >>
     if (items.size == 0) {
         resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_, 0, rangePrice)
         return
@@ -464,6 +483,9 @@ function applyAfterRemove(appliedSubFilters_: Set<number>,
             filterId = num
         }
     }
+    // block #3 <<
+
+    // block #4 >>
     const rem = getSubFilters(items, countItemsBySubfilter_)
     enableAllFilters(filters_, 0,false)
     enableAllSubFilters2(filterId, subFilters_, enabledSubfilters_, false)
@@ -476,12 +498,12 @@ function applyAfterRemove(appliedSubFilters_: Set<number>,
         }
     }
     copySet(appliedSubFilters_, selectedSubFilters_, applying)
+    // block #4 <<
 }
 
 
 
 export function applyBeforeEnter(appliedSubFilters_: Set<number>, 
-                                 selectedSubFilters_: Set<number>, 
                                  filterId: number, 
                                  filters_: { [id: number]: boolean }, 
                                  subFilters_: { [id: number]: SubFilterModel },
@@ -489,7 +511,7 @@ export function applyBeforeEnter(appliedSubFilters_: Set<number>,
                                  countItemsBySubfilter_: {[id: number]: number },
                                  rangePrice: RangePrice
                                  ) {
-
+    // block #1 >>                                
     const applied = getApplied(appliedSubFilters_, subFilters_, filterId)
     const applying = applied
     if (applying.size == 0 && rangePrice.userMinPrice == 0 && rangePrice.userMaxPrice == 0 ) {
@@ -497,8 +519,10 @@ export function applyBeforeEnter(appliedSubFilters_: Set<number>,
         enableAllSubFilters2(0, subFilters_, enabledSubfilters_, true)
         return
     }
+    // block #1 <<
 
 
+    // block #2 >>
     let items: Set<number> = new Set()
     if (applying.size == 0) {
         items = getItemsByPrice(rangePrice)     
@@ -507,13 +531,17 @@ export function applyBeforeEnter(appliedSubFilters_: Set<number>,
         groupApplying(applyingByFilter, applying, subFilters_)
         items = getItemsIntersect(applyingByFilter, 0, rangePrice)
     }
+    // block #2 <<
 
+    // block #3 >>
     if (items.size == 0) {
         fillItemsCount(filterId, countItemsBySubfilter_)
-        resetFilters(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_, filterId)
+        resetFilters(appliedSubFilters_, null, filters_, subFilters_, enabledSubfilters_, filterId)
         return
     }
+    // block #3 <<
 
+    // block #4 >>
     const rem = getSubFilters(items, countItemsBySubfilter_)
     disableSubFilters(filterId, subFilters_, enabledSubfilters_)
     for (const id of rem) {
@@ -521,6 +549,7 @@ export function applyBeforeEnter(appliedSubFilters_: Set<number>,
             enabledSubfilters_[id] = true
         }
     }
+    // block #4 <<
 }
 
 export function applyByPrice(rangePrice: RangePrice,
@@ -549,12 +578,22 @@ export function removeFilter(appliedSubFilters_: Set<number>,
                             )  {
 
     removeApplied(appliedSubFilters_, selectedSubFilters_, filterId, subFilters_)
-    applyAfterRemove(appliedSubFilters_, selectedSubFilters_, filters_, subFilters_, enabledSubfilters_, countItemsBySubfilter_, rangePrice)
+    applyAfterRemove(appliedSubFilters_, 
+                     selectedSubFilters_, 
+                     filters_, 
+                     subFilters_, 
+                     enabledSubfilters_, 
+                     countItemsBySubfilter_, 
+                     rangePrice)
 }
 
 
 
-function removeApplied(appliedSubFilters_: Set<number>, selectedSubFilters_: Set<number>, filterId: number = 0, subFilters_: { [id: number]: SubFilterModel; }) {
+function removeApplied(appliedSubFilters_: Set<number>, 
+                       selectedSubFilters_: Set<number>, 
+                       filterId: number = 0, 
+                       subFilters_: { [id: number]: SubFilterModel; }) {
+
     let removing = new Set<number>()
     if (filterId == 0) {
         removing = appliedSubFilters_

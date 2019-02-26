@@ -36,7 +36,7 @@ export function getResults(filterId: number,
     const json3= converter.arrToJson(Array.from(result3))
     const result4 = selected
     const json4= converter.arrToJson(Array.from(result4))
-    const json5 = converter.itemsBySubfilterToJson(countItemsBySubfilter_) 
+    const json5 = converter.dictionaryToJson(countItemsBySubfilter_) 
     const json6 = JSON.stringify({"tipMinPrice" : String(rangePrice.tipMinPrice)})    
     const json7 = JSON.stringify({"tipMaxPrice" : String(rangePrice.tipMaxPrice)})      
     

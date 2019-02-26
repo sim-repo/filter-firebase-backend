@@ -1,4 +1,8 @@
-
+// example of calc perfomance:
+// let t0 = new Date().getTime()
+// const applied = getApplied(appliedSubFilters_, subFilters_)
+// let t1 = new Date().getTime()                                
+// console.log("1: " + (t1 - t0) + " milliseconds.")
 
 export function dictCount(dict: {}): number {
     if (dict == null) {

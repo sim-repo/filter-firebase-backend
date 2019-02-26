@@ -19,12 +19,9 @@ export function arrToJson2(arr:CatalogModel[]) : String {
     return json
 }
 
-export function itemsBySubfilterToJson(dict: {[id: number]:number}) : String {
-    
+export function dictionaryToJson(dict: {[id: number]:number}) : String {
     const obj : {[id: string]: {[id:number]:number}[]} = {}
-    
     obj["items"] = []
-    
     for (const subfID in dict) {
          const id = parseInt(subfID) 
          const o: {[id:number]:number} = {}
@@ -54,6 +51,14 @@ export function subfilterToJson(dict: {[id: number]:SubFilterModel}) : String {
         const model = dict[key]
         obj["items"].push(model)
     }
+    const json = JSON.stringify(obj)
+    return json
+}
+
+
+export function dictionaryArrToJson(dict: {[id: number]:number[]}) : String {
+    const obj : {[id: string]: {[id:number]:number[]}} = {}
+    obj["items"] = dict
     const json = JSON.stringify(obj)
     return json
 }

@@ -9,7 +9,7 @@ export function getResults(rangePrice: RangePrice): String{
     const subFilters_: { [id: number]: boolean } = {};
 
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
-    userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
+    userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_) // ????
 
     applyLogic.applyByPrice(rangePrice, filters_, applyLogic.subFilters,)
     

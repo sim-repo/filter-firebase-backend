@@ -26,6 +26,7 @@ export let subFiltersJson: String
 let subfiltersByFilterJson: String
 let subfiltersByItemJson: String
 let itemsBySubfilterJson: String
+let priceByItemIdJson: String
 
 // ********* cache controls: ***********
 export let useCacheFilters = true
@@ -44,6 +45,24 @@ export function setFiltersJson(jsonStr: String){
 export function setSubfiltersJson(jsonStr: String){
     subFiltersJson = jsonStr
 }
+
+export function setSubfiltersByFilterJson(jsonStr: String) {
+    subfiltersByFilterJson = jsonStr
+}
+
+export function setSubfiltersByItemJson(jsonStr: String) {
+    subfiltersByItemJson = jsonStr
+}
+
+export function setItemsBySubfilterJson(jsonStr: String) {
+    itemsBySubfilterJson = jsonStr
+}
+
+export function setPriceByItemIdJson(jsonStr: String) {
+    priceByItemIdJson = jsonStr
+}
+
+
 
 export function setCache_Filters(val: boolean) {
     useCacheFilters = val
@@ -369,12 +388,58 @@ export const fullFilterEntities  = functions.https.onCall((data, context) => {
 
 
 // ******************************
+// *** heavy full Filter Entities***
+// ******************************
+export const heavyFullFilterEntities  = functions.https.onCall((data, context) => {   
+    // console.log('useCacheFilters', useCacheFilters);
+
+    // force read from db
+    if (helper.dictCount(applyLogic.filters) === 0 ||
+        helper.dictCount(applyLogic.subFilters) === 0 || 
+        helper.stringIsNullOrEmpty(filtersJson) ||
+        helper.stringIsNullOrEmpty(subFiltersJson)) {
+            return loadSequence.loadHeavyFilterEntities()
+    }
+
+    // read from cache by mobile request
+    if (userCache.useGlobalCache(data)) {
+        return{
+            filters: filtersJson,
+            subFilters: subFiltersJson,
+            subfiltersByFilter: subfiltersByFilterJson,
+            subfiltersByItem: subfiltersByItemJson,
+            itemsBySubfilter: itemsBySubfilterJson,
+            priceByItemId: priceByItemIdJson
+        }
+    }
+
+    // useCacheFilters ? cache : db()
+    return new Promise((res3, reject) => {
+        loadFirebase.checkCache_Filters()
+        .then(function() {
+            if (useCacheFilters === false){
+                res3(loadSequence.loadHeavyFilterEntities())
+            } else {
+                res3( {
+                    filters: filtersJson,
+                    subFilters: subFiltersJson,
+                    subfiltersByFilter: subfiltersByFilterJson,
+                    subfiltersByItem: subfiltersByItemJson,
+                    itemsBySubfilter: itemsBySubfilterJson,
+                    priceByItemId: priceByItemIdJson
+                })
+            }
+        }).catch(function (error) {console.log('mistake!', error)})
+    })
+})
+
+
+// ******************************
 // *** current subfilters ids ***
 // ******************************
 export const currSubFilterIds  = functions.https.onCall((data, context) => {   
   // console.log('useCacheFilters', useCacheFilters);
     const tmpAppliedSubFilters = new Set()
-    const tmpSelectedSubFilters = new Set()
 
     const arr = data.appliedSubFilters
     applyLogic.setAppliedSubFilters(arr, tmpAppliedSubFilters)
@@ -395,7 +460,6 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
                 .then(function() {
                     const result = outEnterSubfilter.getResults(filterId, 
                                                                 tmpAppliedSubFilters, 
-                                                                tmpSelectedSubFilters, 
                                                                 rangePrice)
                     res3( {
                         filterId: result[0],
@@ -412,7 +476,6 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
       //  console.log("read from cache by mobile request")
         const result = outEnterSubfilter.getResults(filterId, 
                                                     tmpAppliedSubFilters, 
-                                                    tmpSelectedSubFilters, 
                                                     rangePrice)
         return{
             filterId: result[0],
@@ -433,7 +496,6 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
                     .then(function() {
                         const result = outEnterSubfilter.getResults(filterId, 
                                                                     tmpAppliedSubFilters, 
-                                                                    tmpSelectedSubFilters, 
                                                                     rangePrice)
                         res3( {
                             filterId: result[0],
@@ -445,7 +507,6 @@ export const currSubFilterIds  = functions.https.onCall((data, context) => {
             } else {
                 const result = outEnterSubfilter.getResults(filterId, 
                                                             tmpAppliedSubFilters, 
-                                                            tmpSelectedSubFilters, 
                                                             rangePrice)
                 res3( {
                     filterId: result[0],

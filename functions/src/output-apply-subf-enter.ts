@@ -5,7 +5,6 @@ import { RangePrice } from './model-range-price';
 
 export function getResults(filterId: number, 
                            applied: Set<number>, 
-                           selected: Set<number>, 
                            rangePrice: RangePrice): [String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
@@ -17,7 +16,6 @@ export function getResults(filterId: number,
 
 
     applyLogic.applyBeforeEnter(applied, 
-                                selected, 
                                 filterId, 
                                 filters_, 
                                 applyLogic.subFilters, 
@@ -31,7 +29,7 @@ export function getResults(filterId: number,
     const json2 = converter.arrToJson(subFiltersIds)
     const json3 = converter.arrToJson(Array.from(applied))
     
-    const json4 = converter.itemsBySubfilterToJson(countItemsBySubfilter_)
+    const json4 = converter.dictionaryToJson(countItemsBySubfilter_)
  
     return [json1, json2, json3, json4]
 }
