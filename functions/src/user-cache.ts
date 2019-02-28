@@ -37,19 +37,6 @@ export function parseRangePrice(data: any, rangePrice: RangePrice){
         userMaxPrice = helper.toNumber(sUserMaxPrice)
     }
 
-    const sTipMinPrice = data.tipMinPrice as String
-    let tipMinPrice = 0
-    if (helper.stringIsNullOrEmpty(sTipMinPrice) === false) {
-        tipMinPrice = helper.toNumber(sTipMinPrice)
-    }
-
-    const sTipMaxPrice = data.tipMaxPrice as String
-    let tipMaxPrice = 0
-    if (helper.stringIsNullOrEmpty(sTipMaxPrice) === false) {
-        tipMaxPrice = helper.toNumber(sTipMaxPrice)
-    }
-
-
     rangePrice.userMinPrice = userMinPrice
     rangePrice.userMaxPrice = userMaxPrice
     rangePrice.tipMinPrice = 50000000

@@ -38,27 +38,8 @@ export function getEnabledSubFiltersIds(enabledSubfilters_: { [id: number]: bool
      return res.sort((n1,n2)=> n1 - n2)
 }
 
-function limitRangePrice(rangePrice: RangePrice, items: Set<number>){
-    let minPrice = 50000000
-    let maxPrice = -1
-    
-    for (const itemId of items) {
-        if (priceByItemId[itemId] != null) {
-            const price = priceByItemId[itemId]
-            if (minPrice > price) {
-                minPrice = price
-            }
-            if (maxPrice < price) {
-                maxPrice = price
-            }
-        }
-    }
-    rangePrice.tipMinPrice = minPrice
-    rangePrice.tipMaxPrice = maxPrice
 
-}
-
-function limitRangePrice2(itemId: number, rangePrice: RangePrice) {
+function limitRangePrice(itemId: number, rangePrice: RangePrice) {
     if (priceByItemId[itemId] != null) {
         const price = priceByItemId[itemId]
         if (rangePrice.tipMinPrice > price) {
@@ -97,7 +78,7 @@ function getItemIds(bySubFilterIds: number[], rangePrice: RangePrice): Set<numbe
                 } else {
                     arr.push(itemId)
                 }
-                limitRangePrice2(itemId, rangePrice)
+                limitRangePrice(itemId, rangePrice)
             }
         }
     }
@@ -306,7 +287,33 @@ function copySet2(originalSet: Set<number>,  newSet:  Set<number>){
     }
 }
 
+export function applyForTotal(appliedSubFilters_: Set<number>, 
+                              selectedSubFilters_: Set<number>,
+                              subFilters_: { [id: number]: SubFilterModel },
+                              rangePrice: RangePrice ): number {
 
+    // block #1 >>
+    const selected = selectedSubFilters_
+    const applied = getApplied(appliedSubFilters_, subFilters_)
+    let applying = selected
+    if (applied != null) {
+        applying = helper.union(selected, applied)
+    } 
+    // block #1 <<
+
+    // block #2 >>
+    let items: Set<number> = new Set()
+    if (applying.size == 0) {
+        items = getItemsByPrice(rangePrice)     
+    } else {
+    const applyingByFilter: {[id: number]: number[]} = {}
+    groupApplying(applyingByFilter, applying, subFilters_)
+    items = getItemsIntersect(applyingByFilter, 0, rangePrice)
+    }
+    // block #2 <<
+
+    return items.size
+}
 
 export function applyFromFilter(appliedSubFilters_: Set<number>, 
                                 selectedSubFilters_: Set<number>, 
@@ -415,7 +422,8 @@ export function applyFromSubFilter(filterId: number,
     // block #4 <<
 
 
-    // block #5 >>
+    // block #5 >>ß
+    rangePrice.itemsTotal = items.size
     const rem = getSubFilters(items)
 
     enableAllFilters(filters_, 0, false)

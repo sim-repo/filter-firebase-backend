@@ -8,4 +8,5 @@ export class RangePrice {
     userMaxPrice:number = 0
     tipMinPrice:number = 0
     tipMaxPrice: number = 0
+    itemsTotal: number = 0
 }

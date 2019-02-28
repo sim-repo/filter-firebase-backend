@@ -6,14 +6,13 @@ import { RangePrice } from './model-range-price';
 export function getResults(filterId: number, 
                             applied: Set<number>, 
                             selected: Set<number>, 
-                            rangePrice: RangePrice): [String, String, String, String, String, String]{
+                            rangePrice: RangePrice): [String, String, String, String, String, String, String]{
     
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {};
     
     userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
-    userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)
-
+    userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)                     
 
     applyLogic.applyFromSubFilter(filterId, 
                                     applied, 
@@ -21,7 +20,8 @@ export function getResults(filterId: number,
                                     filters_, 
                                     applyLogic.subFilters, 
                                     subFilters_, 
-                                    rangePrice)
+                                    rangePrice
+                                    )
 
     const result1 = applyLogic.getEnabledFiltersIds(filters_)
     const json1 = converter.arrToJson(result1)
@@ -33,5 +33,7 @@ export function getResults(filterId: number,
     const json4= converter.arrToJson(Array.from(result4))
     const json5 = JSON.stringify({"tipMinPrice" : String(rangePrice.tipMinPrice)})    
     const json6 = JSON.stringify({"tipMaxPrice" : String(rangePrice.tipMaxPrice)})      
-    return [json1, json2, json3, json4, json5, json6]
+    const json7 = JSON.stringify({"total" : String(rangePrice.itemsTotal)})
+
+    return [json1, json2, json3, json4, json5, json6, json7]
 }

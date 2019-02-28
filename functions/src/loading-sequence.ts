@@ -5,11 +5,79 @@ import * as converter from './converter';
 import * as applyLogic from './main-applying-logic'
 
 
-export function loadFilterEntities(): Promise<void | {}>{
+
+// Chunk loading >>>
+
+export function loadFilterChunk1(): Promise<void | {}>{
     return new Promise((res2, reject) => {
         const p1 = new Promise((res, rej) => {
             res(dataload.fillFilters())
         }); 
+        Promise.all([p1]).then(values => { 
+            m.setFiltersJson(converter.filterToJson(applyLogic.filters))
+            res2(1);
+        })
+        .catch(function (error) {console.log('mistake!', error)})
+    }).catch(function (error) {console.log('mistake!', error)})
+}
+
+
+export function loadSubFilterChunk2(): Promise<void | {}>{
+    return new Promise((res2, reject) => {
+        const p1 = new Promise((res, rej) => {
+            res(dataload.fillSubFilters())
+        }); 
+
+        const p2= new Promise((res, rej) => {
+            res(dataload.fillSubfiltersByFilter())
+        }); 
+
+        Promise.all([p1, p2]).then(values => { 
+            m.setSubfiltersJson(converter.subfilterToJson(applyLogic.subFilters))
+            m.setSubfiltersByFilterJson(converter.dictionaryArrToJson(applyLogic.subfiltersByFilter))
+            res2(1);
+        })
+        .catch(function (error) {console.log('mistake!', error)})
+    }).catch(function (error) {console.log('mistake!', error)})
+}
+
+
+export function loadItemsChunk3(): Promise<void | {}>{
+    return new Promise((res2, reject) => {
+
+        const p1 = new Promise((res, rej) => {
+            res(dataload.fillSubfiltersByItem())
+        }); 
+
+        const p2= new Promise((res, rej) => {
+            res(dataload.fillItemsBySubfilter())
+        }); 
+
+        const p3 = new Promise((res, rej) => {
+            res(dataload.fillPriceByItem())
+        });
+
+
+        Promise.all([p1, p2, p3]).then(values => { 
+            m.setSubfiltersByItemJson(converter.dictionaryArrToJson(applyLogic.subfiltersByItem))
+            m.setItemsBySubfilterJson(converter.dictionaryArrToJson(applyLogic.itemsBySubfilter))
+            m.setPriceByItemIdJson(converter.dictionaryToJson(applyLogic.priceByItemId))
+            res2(1);
+        })
+        .catch(function (error) {console.log('mistake!', error)})
+    }).catch(function (error) {console.log('mistake!', error)})
+}
+
+// Chunk loading <<<
+
+
+
+export function loadFilterEntities(): Promise<void | {}>{
+    return new Promise((res2, reject) => {
+        
+        const p1 = new Promise((res, rej) => {
+            res(dataload.fillPriceByItem())
+        });
 
         const p2= new Promise((res, rej) => {
             res(dataload.fillSubFilters())
@@ -18,11 +86,12 @@ export function loadFilterEntities(): Promise<void | {}>{
         Promise.all([p1, p2]).then(values => { 
             m.setFiltersJson(converter.filterToJson(applyLogic.filters))
             m.setSubfiltersJson(converter.subfilterToJson(applyLogic.subFilters))
+            m.setItemsBySubfilterJson(converter.dictionaryArrToJson(applyLogic.itemsBySubfilter))
+            m.setPriceByItemIdJson(converter.dictionaryToJson(applyLogic.priceByItemId))
+            m.setSubfiltersByFilterJson(converter.dictionaryArrToJson(applyLogic.subfiltersByFilter))
+            m.setSubfiltersByItemJson(converter.dictionaryArrToJson(applyLogic.subfiltersByItem))
 
-            res2( {
-                filters: m.filtersJson,
-                subFilters: m.subFiltersJson
-            });
+            res2(1);
         })
         .catch(function (error) {console.log('mistake!', error)})
     }).catch(function (error) {console.log('mistake!', error)})

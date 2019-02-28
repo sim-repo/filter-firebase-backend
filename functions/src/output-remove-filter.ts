@@ -6,7 +6,7 @@ import { RangePrice } from './model-range-price';
 export function getResults(filterId: number, 
                            applied: Set<number>, 
                            selected: Set<number>,
-                           rangePrice: RangePrice): [String, String, String, String, String, String, String]{
+                           rangePrice: RangePrice): [String, String, String, String, String, String, String, String]{
 
 
     const filters_: { [id: number]: boolean } = {}
@@ -39,7 +39,8 @@ export function getResults(filterId: number,
     const json5 = converter.dictionaryToJson(countItemsBySubfilter_) 
     const json6 = JSON.stringify({"tipMinPrice" : String(rangePrice.tipMinPrice)})    
     const json7 = JSON.stringify({"tipMaxPrice" : String(rangePrice.tipMaxPrice)})      
-    
-    return [json1, json2, json3, json4, json5, json6, json7]
+    const json8 = JSON.stringify({"total" : String(rangePrice.itemsTotal)})
+
+    return [json1, json2, json3, json4, json5, json6, json7, json8]
 
 }
