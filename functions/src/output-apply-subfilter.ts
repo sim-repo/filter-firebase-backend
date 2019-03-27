@@ -2,23 +2,32 @@ import * as converter from './converter';
 import * as applyLogic from './main-applying-logic';
 import * as userCache from './user-cache'
 import { RangePrice } from './model-range-price';
+import * as m from './index';
 
-export function getResults(filterId: number, 
-                            applied: Set<number>, 
-                            selected: Set<number>, 
-                            rangePrice: RangePrice): [String, String, String, String, String, String, String]{
+
+export function getResults(data: any){
     
+    const categoryId = data.categoryId as number
+    const category = m.cacheByCategory[categoryId]
+
+    const applied = new Set()
+    const selected = new Set()
+    userCache.parseDataApplying(data, applied, selected)
+    const rangePrice = new RangePrice()
+    userCache.parseRangePriceWhenMaybeReset(data, rangePrice)
+    const filterId = data.filterId
+
     const filters_: { [id: number]: boolean } = {}
     const subFilters_: { [id: number]: boolean } = {};
     
-    userCache.prepareUserCacheFilter(applyLogic.filters, filters_)
-    userCache.prepareUserCacheSubfilter(applyLogic.subFilters, subFilters_)                     
+    userCache.prepareUserCacheFilter(category.filters, filters_)
+    userCache.prepareUserCacheSubfilter(category.subFilters, subFilters_)                     
 
     applyLogic.applyFromSubFilter(filterId, 
                                     applied, 
                                     selected, 
                                     filters_, 
-                                    applyLogic.subFilters, 
+                                    category.subFilters, 
                                     subFilters_, 
                                     rangePrice
                                     )
@@ -35,5 +44,13 @@ export function getResults(filterId: number,
     const json6 = JSON.stringify({"tipMaxPrice" : String(rangePrice.tipMaxPrice)})      
     const json7 = JSON.stringify({"total" : String(rangePrice.itemsTotal)})
 
-    return [json1, json2, json3, json4, json5, json6, json7]
+    return {
+        filtersIds: json1,
+        subFiltersIds: json2,
+        appliedSubFiltersIds: json3,
+        selectedSubFiltersIds: json4,
+        tipMinPrice: json5,
+        tipMaxPrice: json6,
+        itemsTotal: json7
+    }
 }

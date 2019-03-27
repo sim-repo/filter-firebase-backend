@@ -1,20 +1,27 @@
 
-import * as m from './index';
 import * as converter from './converter';
 import { CatalogModel } from './model-catalog';
 
-export function getResults(nextItemsIds: number[]){
 
-    const next:CatalogModel[] = new Array()
-    
+export let itemsById: { [id: number]: CatalogModel } = { };
+
+
+export function getResults(data: any){
+
+    const nextItemsIds = data.itemsIds as number[]
+
+    const catalogModels: CatalogModel[] = new Array()
+
     if (nextItemsIds != null && nextItemsIds.length > 0) {   
         for(const id of nextItemsIds) {
-            if(m.itemsById[id] != null) {
-                next.push(m.itemsById[id])
+            if(itemsById[id] != null) {
+                catalogModels.push(itemsById[id])
             }
         }
     }
 
-    const json = converter.arrToJson2(next)
-    return json
+    const json = converter.catalogModelToJson(catalogModels)
+    return {
+        items: json
+    }
 }

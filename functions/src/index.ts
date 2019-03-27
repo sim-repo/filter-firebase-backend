@@ -1,38 +1,41 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as applyLogic from './main-applying-logic';
-import { CatalogModel } from './model-catalog';
-import * as loadFirebase from './loading-firebase';
-import * as loadSequence from './loading-sequence';
-import * as outCatalog from './output-catalog';
-import * as outCatalogTotal from './output-catalog-totals';
-import * as outEnterSubfilter from './output-apply-subf-enter';
-import * as outRemoveFilter from './output-remove-filter';
-import * as outApplyFilter from './output-apply-filter';
-import * as outApplySubfilter from './output-apply-subfilter';
-import * as outApplyByPrice from './output-apply-price';
-import * as outItemsTotal from './output-items-total';
+import * as applyFilter from './output-apply-filter';
+import * as applySubfilter from './output-apply-subfilter';
+import * as applyByPrice from './output-apply-price';
+import * as applyEnter from './output-apply-subf-enter';
+import * as removeFilter from './output-remove-filter';
+import * as prefetching from './output-catalog';
+import * as calcMidTotal from './output-items-total'
+import * as catalogTotals from './output-catalog-totals'
+import * as chunk1 from './output-chunk1'
+import * as chunk2 from './output-chunk2'
+import * as chunk3 from './output-chunk3'
+import * as chunk4 from './output-chunk4'
+import * as chunk5 from './output-chunk5'
+import * as uidsout from './output-cross-uids'
 import * as helper from './helper';
-import * as userCache from './user-cache';
-import { RangePrice } from './model-range-price';
+import * as applyLogic from './main-applying-logic';
+import * as loadSequence from './loading-sequence';
+import { CacheFiltersByCategory } from './cache-filters-by-category';
+import * as lightFilterEntities from './output-light-filter-entities'
+import { UIDModel } from './model-uuid';
+import * as converter from './converter';
 
-
-
+export enum ClientMode {
+    Light,
+    Heavy
+}
 
 admin.initializeApp();
-
-export let itemsByCatalog: { [id: number]: CatalogModel[]; } = { };
-export let itemsById: { [id: number]: CatalogModel } = { };
-
-// ********* prepared json: ***********
-export let filtersJson: String
-export let subFiltersJson: String
-let subfiltersByFilterJson: String
-let subfiltersByItemJson: String
-let itemsBySubfilterJson: String
-let priceByItemIdJson: String
+export let clientMode: ClientMode = ClientMode.Heavy
+export let cacheByCategory: { [id: number]: CacheFiltersByCategory } = {};
+export let uids: UIDModel[] = []
+export let uidsJSON: String = ""
+let cacheLoadInProgress = false
 
 // ********* cache controls: ***********
+
 export let useCacheFilters = true
 export let useCacheSubFilters = true
 export let useCacheSubfiltersByFilter = true
@@ -40,31 +43,6 @@ export let useCacheSubfiltersByItem = true
 export let useCacheItemsBySubfilter = true
 
 export const prefetchLimit = 20
-
-
-export function setFiltersJson(jsonStr: String){
-    filtersJson = jsonStr
-}
-
-export function setSubfiltersJson(jsonStr: String){
-    subFiltersJson = jsonStr
-}
-
-export function setSubfiltersByFilterJson(jsonStr: String) {
-    subfiltersByFilterJson = jsonStr
-}
-
-export function setSubfiltersByItemJson(jsonStr: String) {
-    subfiltersByItemJson = jsonStr
-}
-
-export function setItemsBySubfilterJson(jsonStr: String) {
-    itemsBySubfilterJson = jsonStr
-}
-
-export function setPriceByItemIdJson(jsonStr: String) {
-    priceByItemIdJson = jsonStr
-}
 
 export function setCache_Filters(val: boolean) {
     useCacheFilters = val
@@ -86,816 +64,127 @@ export function setCache_SubfiltersByItem(val: boolean) {
     useCacheSubfiltersByItem = val
 }
 
-
-
-function parseRequest(req: functions.Request, appliedSubFilters_: Set<number>, selectedSubFilters_: Set<number>){
-    const tmp1 = req.body.appliedSubFilters 
-    const tmp2 = req.body.selectedSubFilters 
-    const arr = tmp1.split(",");
-    applyLogic.setAppliedSubFilters(arr, appliedSubFilters_)
-    const arr2 = tmp2.split(",");
-    applyLogic.setSelectedSubFilters(arr2, selectedSubFilters_)
+export function setUidJSON(){
+    uidsJSON = converter.uidsToJson(uids)
 }
 
 
-// ******************************
-// *** remove from Filter ***
-// ******************************
-export const apiRemoveFilter  = functions.https.onCall((data, context) => {   
-    const tmpAppliedSubFilters = new Set()
-    const tmpSelectedSubFilters = new Set()
-    userCache.parseDataApplying(data, tmpAppliedSubFilters, tmpSelectedSubFilters)
-    const filterId = data.filterId
+function isGlobalCacheReady(): Boolean {
+    if (clientMode == ClientMode.Light) {
+        if (helper.dictCount(cacheByCategory) === 0 ||
+            helper.dictCount(applyLogic.subfiltersByFilter) === 0 ||
+            helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
+            helper.dictCount(applyLogic.itemsBySubfilter) === 0 || 
+            helper.dictCount(applyLogic.priceByItem) === 0) {
+                return false
+        }
+    }
+    if (clientMode == ClientMode.Heavy) {
+        if (helper.dictCount(cacheByCategory) === 0) {
+            return false
+        }
+    }
+    return true
+}
 
-    const rangePrice = new RangePrice()
-    userCache.parseRangePriceWhenMaybeReset(data, rangePrice)
 
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0 ||
-    helper.dictCount(applyLogic.subFilters) === 0 || 
-    helper.dictCount(applyLogic.subfiltersByFilter) === 0||
-    helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
-    helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-       // console.log("force: read from db()")
+
+function runMethod(data: any) {
+
+    const method = data.method as String
+
+    switch (method) {
+        case "doApplyFromFilter": {
+            return applyFilter.getResults(data)
+        }
+            
+        case "doApplyFromSubfilter": {
+            return applySubfilter.getResults(data)
+        }
+            
+        case "doApplyPrice": {
+            return applyByPrice.getResults(data)
+        }
+            
+        case "doApplySubfilterEnter": {
+            return applyEnter.getResults(data)
+        }
+
+        case "doRemoveFilter": {
+            return removeFilter.getResults(data)
+        }
+
+        case "getLightFilterEntities": {
+            return lightFilterEntities.getResults(data)
+        }
+
+        case "getPrefetching": {
+            return prefetching.getResults(data)
+        }
+
+        case "doCalcMidTotal": {
+            return calcMidTotal.getResults(data)
+        }
+
+        case "getCatalogTotals": {
+            return catalogTotals.getResults(data)
+        }
+
+        case "getFiltersChunk1": {
+            return chunk1.getResults(data)
+        }
+
+        case "getSubfiltersChunk2": {
+            return chunk2.getResults(data)
+        }
+
+        case "getItemsChunk3": {
+            return chunk3.getResults(data)
+        }
+
+        case "getCrossChunk4": {
+            return chunk4.getResults(data)
+        }
+
+        case "getCategoryFiltersChunk5": {
+            return chunk5.getResults(data)
+        }
+
+        case "getUIDs": {
+            return uidsout.getResults(data)
+        }
+            
+        default: {
+            return {res: "server err"}
+        }
+    }
+}
+
+
+
+
+export const meta  = functions.https.onCall((data, context) => {   
+
+    const method = data.method as String
+  //  console.log("request: " + method + ", cacheLoadInProgress: "+ cacheLoadInProgress)
+    
+
+    if (isGlobalCacheReady() === false) {
+        console.log("force: read from db(): "+ method)
+        if (cacheLoadInProgress) {
+            console.log("request has been rejected: " + method)
+            return ""
+        }
+        cacheLoadInProgress = true
         return new Promise((res3, reject) => {
-            loadSequence.loadFilterIds()
-            .then(function() {
-                const results = outRemoveFilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    filtersIds: results[0],
-                    subFiltersIds: results[1],
-                    appliedSubFiltersIds: results[2],
-                    selectedSubFiltersIds: results[3],
-                    countItemsBySubfilter: results[4],
-                    tipMinPrice: results[5],
-                    tipMaxPrice: results[6],
-                    itemsTotal: results[7]
-                })
-            }).catch(function (error) {console.log('mistake!', error)})
-        })    
-   }
-
-
-   // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        const results = outRemoveFilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-        return {
-            filtersIds: results[0],
-            subFiltersIds: results[1],
-            appliedSubFiltersIds: results[2],
-            selectedSubFiltersIds: results[3],
-            countItemsBySubfilter: results[4],
-            tipMinPrice: results[5],
-            tipMaxPrice: results[6],
-            itemsTotal: results[7]
-        }
-    }
-
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-            // console.log("cache-false: read from db()")
-                loadSequence.loadFilterIds()
+            loadSequence.loadGlobalCache()
                 .then(function() {
-                    const results = outRemoveFilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                    res3( {
-                        filtersIds: results[0],
-                        subFiltersIds: results[1],
-                        appliedSubFiltersIds: results[2],
-                        selectedSubFiltersIds: results[3],
-                        countItemsBySubfilter: results[4],
-                        tipMinPrice: results[5],
-                        tipMaxPrice: results[6],
-                        itemsTotal: results[7]
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                const results = outRemoveFilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    filtersIds: results[0],
-                    subFiltersIds: results[1],
-                    appliedSubFiltersIds: results[2],
-                    selectedSubFiltersIds: results[3],
-                    countItemsBySubfilter: results[4],
-                    tipMinPrice: results[5],
-                    tipMaxPrice: results[6],
-                    itemsTotal: results[7]
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-// ******************************
-// *** apply from Filter ***
-// ******************************
-export const applyFromFilterNow  = functions.https.onCall((data, context) => {   
-   // console.log('useCacheFilters', useCacheFilters);
-    const tmpAppliedSubFilters = new Set()
-    const tmpSelectedSubFilters = new Set()
-    userCache.parseDataApplying(data, tmpAppliedSubFilters, tmpSelectedSubFilters)
-    const rangePrice = new RangePrice()
-    userCache.parseRangePrice(data, rangePrice)
-
-
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0 ||
-        helper.dictCount(applyLogic.subFilters) === 0 || 
-        helper.dictCount(applyLogic.subfiltersByFilter) === 0||
-        helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
-        helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-        console.log("force: read from db()")
-        return new Promise((res3, reject) => {
-            loadSequence.loadFilterIds()
-            .then(function() {
-                const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    filtersIds: results[0],
-                    subFiltersIds: results[1],
-                    appliedSubFiltersIds: results[2],
-                    selectedSubFiltersIds: results[3],
-                    itemIds: results[4]
-                })
-            }).catch(function (error) {console.log('mistake!', error)})
-        })    
-   }
-
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        console.log("read from cache by mobile request")
-        const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-        return {
-            filtersIds: results[0],
-            subFiltersIds: results[1],
-            appliedSubFiltersIds: results[2],
-            selectedSubFiltersIds: results[3],
-            itemIds: results[4]
-        }
+                    cacheLoadInProgress = false
+                    res3 (runMethod(data))
+                }).catch(function (error) {console.log('mistake!', error)})    
+            })
     }
 
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                //console.log("cache-false: read from db()")
-                loadSequence.loadFilterIds()
-                .then(function() {
-                    const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                    res3( {
-                        filtersIds: results[0],
-                        subFiltersIds: results[1],
-                        appliedSubFiltersIds: results[2],
-                        selectedSubFiltersIds: results[3],
-                        itemIds: results[4]
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                const results = outApplyFilter.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    filtersIds: results[0],
-                    subFiltersIds: results[1],
-                    appliedSubFiltersIds: results[2],
-                    selectedSubFiltersIds: results[3],
-                    itemIds: results[4]
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-// ******************************
-// *** apply from SubFilter ***
-// ******************************
-export const applyFromSubFilterNow  = functions.https.onCall((data, context) => {   
-  //  console.log('useCacheFilters', useCacheFilters);
-    const tmpAppliedSubFilters = new Set()
-    const tmpSelectedSubFilters = new Set()
-    userCache.parseDataApplying(data, tmpAppliedSubFilters, tmpSelectedSubFilters)
-    const rangePrice = new RangePrice()
-    userCache.parseRangePriceWhenMaybeReset(data, rangePrice)
-    const filterId = data.filterId
-    
-    
-
-     // force read from db
-     if (helper.dictCount(applyLogic.filters) === 0 ||
-     helper.dictCount(applyLogic.subFilters) === 0 || 
-     helper.dictCount(applyLogic.subfiltersByFilter) === 0||
-     helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
-     helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-       //  console.log("force: read from db()")
-         return new Promise((res3, reject) => {
-            loadSequence.loadFilterIds()
-             .then(function() {
-                const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    filtersIds: results[0],
-                    subFiltersIds: results[1],
-                    appliedSubFiltersIds: results[2],
-                    selectedSubFiltersIds: results[3],
-                    tipMinPrice: results[4],
-                    tipMaxPrice: results[5],
-                    itemsTotal: results[6]
-                })
-             }).catch(function (error) {console.log('mistake!', error)})
-         })    
-    }
-
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-       // console.log("read from cache by mobile request")
-       const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-       return{
-           filtersIds: results[0],
-           subFiltersIds: results[1],
-           appliedSubFiltersIds: results[2],
-           selectedSubFiltersIds: results[3],
-           tipMinPrice: results[4],
-           tipMaxPrice: results[5],
-           itemsTotal: results[6]
-       }
-    }
-
-     // useCacheFilters ? cache : db()
-     return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-              //  console.log("cache-false: read from db()")
-              loadSequence.loadFilterIds()
-                .then(function() {
-                    const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                    res3( {
-                        filtersIds: results[0],
-                        subFiltersIds: results[1],
-                        appliedSubFiltersIds: results[2],
-                        selectedSubFiltersIds: results[3],
-                        tipMinPrice: results[4],
-                        tipMaxPrice: results[5],
-                        itemsTotal: results[6]
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                const results = outApplySubfilter.getResults(filterId, tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    filtersIds: results[0],
-                    subFiltersIds: results[1],
-                    appliedSubFiltersIds: results[2],
-                    selectedSubFiltersIds: results[3],
-                    tipMinPrice: results[4],
-                    tipMaxPrice: results[5],
-                    itemsTotal: results[6]
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-// ******************************
-// *** full Filter Entities***
-// ******************************
-export const fullFilterEntities  = functions.https.onCall((data, context) => {   
-    // console.log('useCacheFilters', useCacheFilters);
-
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0 ||
-        helper.dictCount(applyLogic.subFilters) === 0 || 
-        helper.stringIsNullOrEmpty(filtersJson) ||
-        helper.stringIsNullOrEmpty(subFiltersJson)) {
-            return loadSequence.loadFilterEntities()
-    }
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        return{
-            filters: filtersJson,
-            subFilters: subFiltersJson
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                res3(loadSequence.loadFilterEntities())
-            } else {
-                res3( {
-                    filters: filtersJson,
-                    subFilters: subFiltersJson
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-
-
-
-// ******************************
-// *** current subfilters ids ***
-// ******************************
-export const currSubFilterIds  = functions.https.onCall((data, context) => {   
-  // console.log('useCacheFilters', useCacheFilters);
-    const tmpAppliedSubFilters = new Set()
-
-    const arr = data.appliedSubFilters
-    applyLogic.setAppliedSubFilters(arr, tmpAppliedSubFilters)
-    const filterId = data.filterId
-    const rangePrice = new RangePrice()
-    userCache.parseRangePrice(data, rangePrice)
-
-    
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0 ||
-        helper.dictCount(applyLogic.subFilters) === 0 || 
-        helper.dictCount(applyLogic.subfiltersByFilter) === 0||
-        helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
-        helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-         //   console.log("force: read from db()")
-            return new Promise((res3, reject) => {
-                loadSequence.loadFilterIds()
-                .then(function() {
-                    const result = outEnterSubfilter.getResults(filterId, 
-                                                                tmpAppliedSubFilters, 
-                                                                rangePrice)
-                    res3( {
-                        filterId: result[0],
-                        subFiltersIds: result[1],
-                        appliedSubFiltersIds: result[2],
-                        countItemsBySubfilter: result[3]
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            })    
-    }
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-      //  console.log("read from cache by mobile request")
-        const result = outEnterSubfilter.getResults(filterId, 
-                                                    tmpAppliedSubFilters, 
-                                                    rangePrice)
-        return{
-            filterId: result[0],
-            subFiltersIds: result[1],
-            appliedSubFiltersIds: result[2],
-            countItemsBySubfilter: result[3]
-        }
-    }
-
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-          //      console.log("cache-false: read from db()")
-                loadSequence.loadFilterIds()
-                    .then(function() {
-                        const result = outEnterSubfilter.getResults(filterId, 
-                                                                    tmpAppliedSubFilters, 
-                                                                    rangePrice)
-                        res3( {
-                            filterId: result[0],
-                            subFiltersIds: result[1],
-                            appliedSubFiltersIds: result[2],
-                            countItemsBySubfilter: result[3]
-                        })
-                    }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                const result = outEnterSubfilter.getResults(filterId, 
-                                                            tmpAppliedSubFilters, 
-                                                            rangePrice)
-                res3( {
-                    filterId: result[0],
-                    subFiltersIds: result[1],
-                    appliedSubFiltersIds: result[2],
-                    countItemsBySubfilter: result[3]
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-   
-})
-
-// ******************************
-// *** catalog Entities ***
-// ******************************
-export const catalogEntities  = functions.https.onCall((data, context) => {   
-    console.log('useCacheFilters', useCacheFilters);
-    const itemIds = data.itemsIds as number[]
-
-     // force read from db
-     if (helper.dictCount(itemsByCatalog) === 0 || 
-         helper.dictCount(itemsById) === 0
-     ) {
-         console.log("force: read from db()")
-         return new Promise((res3, reject) => {
-            loadSequence.loadCatalogIds()
-             .then(function() {
-                const json = outCatalog.getResults(itemIds)
-                res3({
-                    items: json
-                })
-             }).catch(function (error) {console.log('mistake!', error)})
-         })    
-    }
-
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        console.log("read from cache by mobile request")
-        const json = outCatalog.getResults(itemIds)
-        return {
-            items: json
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                loadSequence.loadCatalogIds()
-                .then(function() {
-                    console.log("cache-false: read from db()")
-                    const json = outCatalog.getResults(itemIds)
-                    res3({
-                        items: json
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                console.log("read from cache")
-                const json = outCatalog.getResults(itemIds)
-                    res3({
-                        items: json
-                    })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-// ******************************
-// *** catalog Mid Total ***
-// ******************************
-export const doCalcMidTotal = functions.https.onCall((data, context) => {
-
-    const tmpAppliedSubFilters = new Set()
-    const tmpSelectedSubFilters = new Set()
-    userCache.parseDataApplying(data, tmpAppliedSubFilters, tmpSelectedSubFilters)
-    const rangePrice = new RangePrice()
-    userCache.parseRangePrice(data, rangePrice)
-
-
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0 ||
-        helper.dictCount(applyLogic.subFilters) === 0 || 
-        helper.dictCount(applyLogic.subfiltersByFilter) === 0||
-        helper.dictCount(applyLogic.subfiltersByItem) === 0 ||
-        helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-        console.log("force: read from db()")
-        return new Promise((res3, reject) => {
-            loadSequence.loadFilterIds()
-            .then(function() {
-                const result = outItemsTotal.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    itemsTotal: result
-                })
-            }).catch(function (error) {console.log('mistake!', error)})
-        })    
-   }
-
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        console.log("read from cache by mobile request")
-        const result = outItemsTotal.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-        return {
-            itemsTotal: result
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                //console.log("cache-false: read from db()")
-                loadSequence.loadFilterIds()
-                .then(function() {
-                    const result = outItemsTotal.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                    res3( {
-                        total: result
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                const result = outItemsTotal.getResults(tmpAppliedSubFilters, tmpSelectedSubFilters, rangePrice)
-                res3( {
-                    itemsTotal: result
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-
-// ******************************
-// *** catalog Totals ***
-// ******************************
-export const catalogTotal  = functions.https.onCall((data, context) => {
-    console.log('useCacheFilters', useCacheFilters);
-    const categoryId = data.categoryId as number
-    const perfetchLimitJson = JSON.stringify({"fetchLimit" : String(prefetchLimit)})
-
-     // force read from db
-     if ( helper.dictCount(itemsByCatalog) === 0) {
-         console.log("force: read from db()")
-         return new Promise((res3, reject) => {
-            loadSequence.loadTotals()
-             .then(function() {
-                const results = outCatalogTotal.getResults(categoryId)
-                res3({
-                    itemIds: results[0],
-                    fetchLimit: perfetchLimitJson,
-                    minPrice: results[1],
-                    maxPrice: results[2]
-                })
-             }).catch(function (error) {console.log('mistake!', error)})
-         })    
-    }
-
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        console.log("read from cache by mobile request")
-        const results = outCatalogTotal.getResults(categoryId)
-        return {
-            itemIds: results[0],
-            fetchLimit: perfetchLimitJson,
-            minPrice: results[1],
-            maxPrice: results[2]
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                loadSequence.loadTotals()
-                .then(function() {
-                    console.log("cache-false: read from db()")
-                    const results = outCatalogTotal.getResults(categoryId)
-                    res3({
-                        itemIds: results[0],
-                        fetchLimit: perfetchLimitJson,
-                        minPrice: results[1],
-                        maxPrice: results[2]
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                console.log("read from cache")
-                const results = outCatalogTotal.getResults(categoryId)
-                    res3({
-                        itemIds: results[0],
-                        fetchLimit: perfetchLimitJson,
-                        minPrice: results[1],
-                        maxPrice: results[2]
-                    })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-    
-})
-
-
-
-// ******************************
-// *** apply Prices ***
-// ******************************
-export const applyByPrices  = functions.https.onCall((data, context) => {
-    console.log('useCacheFilters', useCacheFilters);
-    const rangePrice = new RangePrice()
-    userCache.parseRangePrice(data, rangePrice)
-
-     // force read from db
-     if ( helper.dictCount(itemsByCatalog) === 0) {
-         console.log("force: read from db()")
-         return new Promise((res3, reject) => {
-            loadSequence.loadApplyByPrices()
-             .then(function() {
-                const result = outApplyByPrice.getResults(rangePrice)
-                res3({
-                    filterIds: result
-                })
-             }).catch(function (error) {console.log('mistake!', error)})
-         })    
-    }
-
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        console.log("read from cache by mobile request")
-        const result = outApplyByPrice.getResults(rangePrice)
-        return {
-            filterIds: result
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadSequence.loadApplyByPrices()
-        .then(function() {
-            if (useCacheFilters === false){
-                loadSequence.loadTotals()
-                .then(function() {
-                    console.log("cache-false: read from db()")
-                    const result = outApplyByPrice.getResults(rangePrice)
-                    res3({
-                        filterIds: result
-                    })
-                }).catch(function (error) {console.log('mistake!', error)})
-            } else {
-                console.log("read from cache")
-                const result = outApplyByPrice.getResults(rangePrice)
-                res3({
-                    filterIds: result
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-    
-})
-
-
-
-
-// ******************************
-// *** Filters Chunk 1 ***
-// ******************************
-export const filtersChunk1 = functions.https.onCall((data, context) => {   
-    // console.log('useCacheFilters', useCacheFilters);
-
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0) {
-        return loadSequence.loadFilterChunk1()
-    } 
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        return{
-            filters: filtersJson
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                res3(loadSequence.loadFilterChunk1())
-            } else {
-                res3( {
-                    filters: filtersJson
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-// ******************************
-// *** SubFilters Chunk 2 ***
-// ******************************
-export const subFiltersChunk2 = functions.https.onCall((data, context) => {   
-    // console.log('useCacheFilters', useCacheFilters);
-
-    // force read from db
-    if (helper.dictCount(applyLogic.subFilters) === 0) {
-        return loadSequence.loadSubFilterChunk2()
-    }
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        return{
-            subFilters: subFiltersJson,
-            subfiltersByFilter: subfiltersByFilterJson
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                res3(loadSequence.loadSubFilterChunk2())
-            } else {
-                res3( {
-                    subFilters: subFiltersJson,
-                    subfiltersByFilter: subfiltersByFilterJson
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-// ******************************
-// *** Items Chunk 3 ***
-// ******************************
-export const itemsChunk3 = functions.https.onCall((data, context) => {   
-    // console.log('useCacheFilters', useCacheFilters);
-
-    // force read from db
-    if (helper.dictCount(applyLogic.itemsBySubfilter) === 0) {
-        console.log("force: read from db()")
-        return loadSequence.loadItemsChunk3()
-    }
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        console.log("read from cache by mobile request")
-        return{
-            subfiltersByItem: subfiltersByItemJson,
-            itemsBySubfilter: itemsBySubfilterJson,
-            priceByItemId: priceByItemIdJson
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                console.log("cache-false: read from db()")
-                res3(loadSequence.loadItemsChunk3())
-            } else {
-                console.log("read from cache")
-                res3( {
-                    subfiltersByItem: subfiltersByItemJson,
-                    itemsBySubfilter: itemsBySubfilterJson,
-                    priceByItemId: priceByItemIdJson
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
-})
-
-
-
-
-// ******************************
-// *** heavy full Filter Entities***
-// ******************************
-export const heavyFullFilterEntities  = functions.https.onCall((data, context) => {   
-    // console.log('useCacheFilters', useCacheFilters);
-
-    // force read from db
-    if (helper.dictCount(applyLogic.filters) === 0 ||
-        helper.dictCount(applyLogic.subFilters) === 0 || 
-        helper.stringIsNullOrEmpty(filtersJson) ||
-        helper.stringIsNullOrEmpty(subFiltersJson)) {
-            return loadSequence.loadHeavyFilterEntities()
-    }
-
-    // read from cache by mobile request
-    if (userCache.useGlobalCache(data)) {
-        return{
-            filters: filtersJson,
-            subFilters: subFiltersJson,
-            subfiltersByFilter: subfiltersByFilterJson,
-            subfiltersByItem: subfiltersByItemJson,
-            itemsBySubfilter: itemsBySubfilterJson,
-            priceByItemId: priceByItemIdJson
-        }
-    }
-
-    // useCacheFilters ? cache : db()
-    return new Promise((res3, reject) => {
-        loadFirebase.checkCache_Filters()
-        .then(function() {
-            if (useCacheFilters === false){
-                res3(loadSequence.loadHeavyFilterEntities())
-            } else {
-                res3( {
-                    filters: filtersJson,
-                    subFilters: subFiltersJson,
-                    subfiltersByFilter: subfiltersByFilterJson,
-                    subfiltersByItem: subfiltersByItemJson,
-                    itemsBySubfilter: itemsBySubfilterJson,
-                    priceByItemId: priceByItemIdJson
-                })
-            }
-        }).catch(function (error) {console.log('mistake!', error)})
-    })
+    console.log("read from cache by mobile request: "+ method)
+    return runMethod(data)
 })

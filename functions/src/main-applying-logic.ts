@@ -1,19 +1,13 @@
-
-import { FilterModel } from './model-filter';
 import { SubFilterModel } from './model-subfilter';
 import * as helper from './helper';
 import { RangePrice } from './model-range-price';
 
 
-export let filters: { [id: number]: FilterModel; } = {};
-export let subFilters: { [id: number]: SubFilterModel; } = {};
-
-
-export let subfiltersByFilter: {[id: number]: number[]} = {};
-export let subfiltersByItem: {[id: number]: number[]} = {};
+export let priceByItem: {[id: number]: number} = {};
 export let itemsBySubfilter: {[id: number]: number[]} = {};
-export let priceByItemId: {[id: number]: number} = {};
-export let rangePriceByCategory: {[id: number]: RangePrice} = {};
+export let subfiltersByItem: {[id: number]: number[]} = {};
+export let subfiltersByFilter: {[id: number]: number[]} = {};
+
 
 
 export function getEnabledFiltersIds(enabledFilters_: { [id: number]: boolean; }) {
@@ -40,8 +34,8 @@ export function getEnabledSubFiltersIds(enabledSubfilters_: { [id: number]: bool
 
 
 function limitRangePrice(itemId: number, rangePrice: RangePrice) {
-    if (priceByItemId[itemId] != null) {
-        const price = priceByItemId[itemId]
+    if (priceByItem[itemId] != null) {
+        const price = priceByItem[itemId]
         if (rangePrice.tipMinPrice > price) {
             rangePrice.tipMinPrice = price
         }
@@ -52,8 +46,8 @@ function limitRangePrice(itemId: number, rangePrice: RangePrice) {
 }
 
 function checkPrice(itemId: number, minPrice: number, maxPrice: number): Boolean {
-    if (priceByItemId[itemId] != null) {
-        const price = priceByItemId[itemId]
+    if (priceByItem[itemId] != null) {
+        const price = priceByItem[itemId]
         if (price >= minPrice && price <= maxPrice) {
             return true
         }
@@ -108,8 +102,8 @@ export function getItemsByPrice(rangePrice: RangePrice) : Set<number>{
     let res = new Set<number>() 
 
     // TODO: добавить дополнительную фильтрацию по RangePrice.categoryID!!!!
-    for (const id in priceByItemId) {
-        const price = priceByItemId[id]
+    for (const id in priceByItem) {
+        const price = priceByItem[id]
         if (price >= rangePrice.userMinPrice && price <= rangePrice.userMaxPrice) {
             const i = parseInt(id) 
             res.add(i)

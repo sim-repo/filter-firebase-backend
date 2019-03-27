@@ -1,22 +1,36 @@
-import * as m from './index';
 import * as converter from './converter';
-import * as applyLogic from './main-applying-logic';
+import * as m from './index';
 
 
-export function getResults(categoryId: number): [String, String, String] {
+export const prefetchLimit = 20
+
+export function getResults(data: any) {
+
+    const categoryId = data.categoryId as number
+    const category = m.cacheByCategory[categoryId]
+
+
     const itemIds: number[] = []
  
-    for (const item of m.itemsByCatalog[categoryId]) {
+    for (const item of category.items) {
         itemIds.push(item.id)
     }
     const json1 = converter.arrToJson(itemIds)
 
-    let json2: String = ""
+    const json2 = JSON.stringify({"fetchLimit" : String(prefetchLimit)})
+
     let json3: String = ""
-    const rangePrice = applyLogic.rangePriceByCategory[categoryId]
+    let json4: String = ""
+    const rangePrice = category.rangePrice
     if (rangePrice != null) {
-        json2 = JSON.stringify({"minPrice": String(rangePrice.userMinPrice)})   
-        json3 = JSON.stringify({"maxPrice": String(rangePrice.userMaxPrice)})   
+        json3 = JSON.stringify({"minPrice": String(rangePrice.userMinPrice)})   
+        json4 = JSON.stringify({"maxPrice": String(rangePrice.userMaxPrice)})   
     }
-    return [json1, json2, json3]
+    
+    return {
+        itemIds: json1,
+        fetchLimit: json2,
+        minPrice: json3,
+        maxPrice: json4
+    }
 }
